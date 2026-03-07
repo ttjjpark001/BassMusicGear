@@ -67,6 +67,7 @@ BassMusicGear/
       PowerAmp.h/.cpp         # 파워앰프 새추레이션 / Sag 시뮬레이션 (Post-FX 뒤, Cabinet 앞)
       Tuner.h/.cpp            # YIN 피치 트래킹, 크로매틱 표시용 데이터 생성 (DSP only, UI는 별도)
       BiAmpCrossover.h/.cpp   # Linkwitz-Riley 4차(LR4) 크로스오버. LP→클린DI, HP→앰프체인. OFF시 양쪽 전대역 통과
+      DIBlend.h/.cpp          # 클린DI + 프로세스드 혼합. Blend(0–100%), Clean/Processed 개별 레벨 트림(±12dB)
       GraphicEQ.h/.cpp        # 10밴드 고정주파수 그래픽 EQ (31/63/125/250/500/1k/2k/4k/8k/16kHz), Constant-Q 피킹 바이쿼드
       Effects/
         Compressor.h/.cpp     # VCA/광학 컴프레서 (juce::dsp::Compressor 확장)

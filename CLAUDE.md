@@ -255,3 +255,37 @@ target_link_libraries(BassMusicGear
 - Wave Digital Filters (WDF): RT-WDF 라이브러리 (C++ header-only)
 - 피치 트래킹 (옥타버용): YIN 알고리즘
 - JUCE DSP 모듈 레퍼런스: `juce::dsp::Convolution`, `juce::dsp::Oversampling`, `juce::dsp::StateVariableTPTFilter`
+
+## NAM 지원 (Post-MVP)
+
+NAM(Neural Amp Modeler) 모델을 신호 체인의 각 블록에 선택적으로 적용하는 기능. 블록별 DSP를 NAM 추론으로 대체하거나 병행할 수 있다.
+
+**라이브러리**: `NeuralAmpModelerCore` (오픈소스, MIT)
+```cmake
+# CMakeLists.txt에 추가
+FetchContent_Declare(NeuralAmpModelerCore
+    GIT_REPOSITORY https://github.com/sdatkinson/NeuralAmpModelerCore.git
+    GIT_TAG        main
+)
+FetchContent_MakeAvailable(NeuralAmpModelerCore)
+target_link_libraries(BassMusicGear PRIVATE NeuralAmpModelerCore)
+```
+
+**블록별 NAM 슬롯 구조**: `Preamp`, `PowerAmp`, `Overdrive` 등 비선형 DSP 블록 각각이 `NamSlot`을 선택적으로 보유.
+```cpp
+class Preamp {
+    std::unique_ptr<nam::DSP> namModel;  // null이면 DSP 웨이브쉐이핑 사용
+    bool namEnabled = false;
+
+    void processBlock(AudioBuffer<float>& buffer) {
+        if (namEnabled && namModel)
+            namModel->process(buffer);   // NAM 추론
+        else
+            processWithDSP(buffer);      // 기존 DSP
+    }
+};
+```
+
+**NAM 모델 로드**: 백그라운드 스레드에서 `.nam` 파일 파싱 후 `std::atomic<nam::DSP*>`으로 오디오 스레드에 swap. 로드 중에는 기존 DSP 또는 이전 NAM 모델이 계속 동작.
+
+**DSP ↔ NAM 전환**: APVTS 파라미터(`namEnabled`)로 관리. 전환 시 팝 노이즈 방지를 위해 짧은 크로스페이드(~10ms) 적용.

@@ -310,6 +310,36 @@ Pre-IR:  output = cabinetIR(mixed)         ← 캐비닛 IR이 혼합 결과 전
 - CLAP 포맷 지원 (`clap-juce-extensions`)
 - 오디오 캡처 / WAV 내보내기 (Standalone 전용)
 
+### NAM (Neural Amp Modeler) 모델 지원
+
+신호 체인의 각 블록에 NAM 모델(`.nam` 파일)을 적용할 수 있는 기능. DSP 기반 시뮬레이션을 신경망 기반 모델로 선택적으로 대체하거나 보완한다.
+
+**개요:**
+- NAM은 Steven Atkinson이 개발한 오픈소스 신경망 앰프 모델링 기술 (WaveNet 계열 아키텍처)
+- `.nam` 파일에 실제 하드웨어의 비선형 동작을 학습한 가중치가 저장됨
+- 실시간 추론 가능 — 오디오 스레드에서 직접 실행
+- 라이브러리: `NeuralAmpModelerCore` (C++, MIT 라이선스, JUCE 통합 가능)
+
+**적용 대상 블록:**
+
+| 블록 | NAM 적용 시 대체 동작 |
+|---|---|
+| 프리앰프 | 특정 앰프 프리앰프의 NAM 모델로 DSP 웨이브쉐이핑 대체 |
+| 파워앰프 | 파워앰프 새추레이션/Sag의 NAM 모델로 대체 |
+| 오버드라이브 (Pre-FX) | 페달 단위의 NAM 모델 적용 (실제 페달 클론) |
+| 프리앰프 + 파워앰프 통합 | 전체 앰프 헤드를 단일 NAM 모델로 대체 |
+
+**UI/UX:**
+- 각 블록의 설정 패널에 "NAM 모델 로드" 버튼 제공
+- NAM 모드 활성화 시 해당 블록의 DSP 파라미터 노브는 비활성화 (NAM이 대체하므로)
+- DSP 모드 ↔ NAM 모드 즉시 전환 가능 (A/B 비교 용도)
+- NAM 모델 파일명과 로드 상태를 블록 UI에 표시
+
+**기술 고려사항:**
+- NAM 추론은 오버샘플링 없이 실시간 처리 (모델 내부에서 처리)
+- 모델 파일 로드는 백그라운드 스레드에서, 준비 완료 후 오디오 스레드에 atomic swap
+- `NeuralAmpModelerCore`를 CMake 서브모듈 또는 FetchContent로 추가
+
 ---
 
 ## 범위 외 (Out of Scope — MVP)

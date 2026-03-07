@@ -60,14 +60,14 @@ BassMusicGear/
     PluginProcessor.h/.cpp    # AudioProcessor — processBlock() 진입점, APVTS 정의
     PluginEditor.h/.cpp       # AudioProcessorEditor — UI 루트, 메시지 스레드
     DSP/
-      SignalChain.h/.cpp      # 전체 신호 체인 조립 및 순서 관리
+      SignalChain.h/.cpp      # 전체 신호 체인 조립 및 순서 관리. IR Position(Pre/Post) 파라미터에 따라 Cabinet ↔ DIBlend 연결 순서를 동적으로 변경
       ToneStack.h/.cpp        # 앰프별 톤스택 (TMB/James/Baxandall) IIR 계수 계산
       Preamp.h/.cpp           # 프리앰프 게인 스테이징 + 웨이브쉐이핑 (Oversampling 포함)
       Cabinet.h/.cpp          # juce::dsp::Convolution 래퍼, IR 로드/교체
       PowerAmp.h/.cpp         # 파워앰프 새추레이션 / Sag 시뮬레이션 (Post-FX 뒤, Cabinet 앞)
       Tuner.h/.cpp            # YIN 피치 트래킹, 크로매틱 표시용 데이터 생성 (DSP only, UI는 별도)
       BiAmpCrossover.h/.cpp   # Linkwitz-Riley 4차(LR4) 크로스오버. LP→클린DI, HP→앰프체인. OFF시 양쪽 전대역 통과
-      DIBlend.h/.cpp          # 클린DI + 프로세스드 혼합. Blend(0–100%), Clean/Processed 개별 레벨 트림(±12dB)
+      DIBlend.h/.cpp          # 클린DI + 프로세스드 혼합. Blend(0–100%), Clean/Processed 개별 레벨 트림(±12dB), IR Position(Pre/Post)
       GraphicEQ.h/.cpp        # 10밴드 고정주파수 그래픽 EQ (31/63/125/250/500/1k/2k/4k/8k/16kHz), Constant-Q 피킹 바이쿼드
       Effects/
         Compressor.h/.cpp     # VCA/광학 컴프레서 (juce::dsp::Compressor 확장)

@@ -91,6 +91,8 @@ BassMusicGear/
       SignalChainView.h/.cpp  # 신호 체인 블록 시각화
       PresetPanel.h/.cpp      # 프리셋 브라우저, A/B 슬롯
       CabinetSelector.h/.cpp  # 내장 IR 선택 + 커스텀 IR 파일 로드
+      DIBlendPanel.h/.cpp     # DI Blend UI — Blend 노브, Clean/Processed 레벨 트림, IR Position(Pre/Post) 토글
+      BiAmpPanel.h/.cpp       # Bi-Amp 크로스오버 UI — ON/OFF 토글, Crossover Freq 노브
       SettingsPage.h/.cpp     # 오디오 설정 페이지 (Standalone 전용)
     Presets/
       PresetManager.h/.cpp    # ValueTree 직렬화, 파일 저장/불러오기
@@ -101,13 +103,16 @@ BassMusicGear/
     CMakeLists.txt
     ToneStackTest.cpp         # 톤스택 주파수 응답 단위 테스트
     OverdriveTest.cpp         # 웨이브쉐이퍼 앨리어싱 테스트
+    CompressorTest.cpp        # 컴프레서 타임 컨스턴트 및 게인 리덕션 검증
+    BiAmpCrossoverTest.cpp    # LR4 크로스오버 주파수 응답 및 LP+HP 합산 평탄도 검증
+    DIBlendTest.cpp           # Blend 경계값(0%/50%/100%) 및 Clean/Processed 레벨 트림 정확도 검증
     PresetTest.cpp            # ValueTree 직렬화 테스트
 ```
 
 ### 핵심 JUCE 패턴
 
 **`PluginProcessor` — 오디오 스레드의 진입점**
-- `prepareToPlay(sampleRate, samplesPerBlock)`: DSP 모듈 초기화, 버퍼 할당. 오디오 스레드 시작 전 메인 스레드에서 호출됨.
+- `prepareToPlay(sampleRate, samplesPerBlock)`: DSP 모듈 초기화, 버퍼 할당. 오버샘플링·컨볼루션 지연 합산 후 `setLatencySamples(total)` 호출 필수 — DAW PDC 정확성에 직결됨.
 - `processBlock(AudioBuffer<float>&, MidiBuffer&)`: 매 버퍼마다 오디오 스레드에서 호출. 여기서 `new`/`delete`, 파일 I/O, mutex, 시스템 콜 절대 금지.
 - `releaseResources()`: 재생 중지 시 호출. 버퍼 해제.
 

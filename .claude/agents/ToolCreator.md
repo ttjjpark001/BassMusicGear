@@ -1,7 +1,7 @@
 ---
 name: ToolCreator
 description: PLAN.md의 특정 Phase를 진행하기 전에 호출. 해당 Phase의 🔧 TOOL 섹션을 읽고 TOOLING.md 명세에 따라 슬래쉬 커맨드(.claude/commands/)와 셸 스크립트(scripts/)를 실제 파일로 생성한다. Use this agent at the start of each phase, before writing any DSP or UI code.
-model: claude-sonnet-4-6
+model: claude-haiku-4-5-20251001
 ---
 
 당신은 BassMusicGear 프로젝트의 툴링 인프라 구축 담당입니다.

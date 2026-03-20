@@ -40,7 +40,7 @@ $ARGUMENTS
 
 메모리 파일을 읽는다:
 ```
-파일: C:/Users/남편/.claude/projects/E--Vibe-Coding-Claude-Code-BassMusicGear/memory/MEMORY.md
+파일: E:/Vibe Coding/Claude Code/BassMusicGear/memory/MEMORY.md
 읽을 값: last_completed_phase
 ```
 

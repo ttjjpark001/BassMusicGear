@@ -38,7 +38,7 @@ $ARGUMENTS
 
 메모리 파일을 읽어 마지막으로 완료된 Phase를 확인한다:
 ```
-파일 경로: C:/Users/남편/.claude/projects/E--Vibe-Coding-Claude-Code-BassMusicGear/memory/MEMORY.md
+파일 경로: E:/Vibe Coding/Claude Code/BassMusicGear/memory/MEMORY.md
 읽을 값: last_completed_phase
 ```
 
@@ -204,26 +204,13 @@ Phase N 테스트 기준:
 
 ---
 
-### STEP 7: 메모리 갱신
+### STEP 7: 완료 보고
 
-모든 단계가 성공적으로 완료된 경우에만 메모리를 갱신한다.
-
-메모리 파일을 다음과 같이 수정한다:
-```
-파일: C:/Users/남편/.claude/projects/E--Vibe-Coding-Claude-Code-BassMusicGear/memory/MEMORY.md
-
-변경:
-- last_completed_phase: N  (N = 방금 완료한 phase 번호)
-- Phase N 완료 이력 행: ☐ → ✅, 완료 시각 기재 (현재 날짜/시각)
-```
-
----
-
-### STEP 8: 완료 보고
+**메모리는 갱신하지 않는다.** Phase 완료는 사용자가 직접 앱을 실행해 스모크 테스트를 확인한 뒤 `/Complete N` 명령으로 처리한다.
 
 ```
 ╔══════════════════════════════════════════════════════╗
-║         /Phase N 완료                                ║
+║         /Phase N — 코드 작업 완료                    ║
 ╚══════════════════════════════════════════════════════╝
 
 Phase N: [Phase 이름]
@@ -240,10 +227,12 @@ Phase N: [Phase 이름]
 P1 이월 항목 (다음 Phase에서 처리):
   - [P1 항목 목록, 없으면 "없음"]
 
-다음 실행 가능 Phase: [N+1] — "/Phase [N+1]"로 진행하세요.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  📋 스모크 테스트를 직접 수행해 주세요:
+     Tests/SmokeTest_Phase[N].md 참고
 
-스모크 테스트 체크리스트:
-  Tests/SmokeTest_Phase[N].md 를 참고하여 Standalone에서 수동 확인 바랍니다.
+  ✅ 확인 완료 후 → "/Complete N" 으로 Phase를 완료 처리하세요.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 ---

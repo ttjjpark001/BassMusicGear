@@ -21,6 +21,10 @@ last_completed_phase: 0
 | 8 | UI 완성 + 출력 | ☐ | — |
 | 9 | 오디오 설정 + 릴리즈 | ☐ | — |
 
+## 미결 이슈
+
+- [project_mono_input.md](project_mono_input.md) — 입력을 모노로 받도록 수정 필요 (Phase 9 SettingsPage 구현 시)
+
 ## 메모
 
 - 이 파일은 /Complete 커맨드가 phase 완료 시 자동으로 갱신한다.

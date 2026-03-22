@@ -314,7 +314,7 @@ Pre-IR:  output = cabinetIR(mixed)         ← 캐비닛 IR이 혼합 결과 전
 
 ## 2차 확장 기능 (Post-MVP)
 
-- 추가 앰프 모델: Ampeg B-15 (스튜디오 빈티지), GK 800RB (솔리드스테이트 클린), Mesa Subway D-800
+- 추가 앰프 모델: Ampeg B-15 (스튜디오 빈티지), GK 800RB (솔리드스테이트 클린), Mesa Subway D-800, Aguilar Tone Hammer (JFET + AGS 회로, 펑크/R&B/가스펠)
 - 파라메트릭 EQ 블록 (독립 인서트)
 - 멀티 마이크 IR 동시 블렌딩 (클로즈 + 룸)
 - MIDI CC 매핑 (노브 실시간 제어, `juce::MidiMessage`)

@@ -2,50 +2,101 @@
 
 //==============================================================================
 PluginEditor::PluginEditor (PluginProcessor& p)
-    : AudioProcessorEditor (&p), processorRef (p)
+    : AudioProcessorEditor (&p),
+      processorRef (p),
+      // --- 노브 생성: 라벨, APVTS 파라미터 ID, APVTS 인스턴스 ---
+      inputGainKnob ("Input Gain", "input_gain", p.apvts),  // Preamp 섹션
+      volumeKnob    ("Volume",     "volume",     p.apvts),
+      bassKnob      ("Bass",       "bass",       p.apvts),  // Tone Stack 섹션
+      midKnob       ("Mid",        "mid",        p.apvts),
+      trebleKnob    ("Treble",     "treble",     p.apvts),
+      driveKnob     ("Drive",      "drive",      p.apvts),  // Power Amp 섹션
+      presenceKnob  ("Presence",   "presence",   p.apvts)
 {
-    // 기본 창 크기: 800 x 500
-    // Phase 8에서 리사이즈 지원(setResizable)과 최소/최대 크기 제한이 추가된다.
+    // --- 노브 표시 ---
+    addAndMakeVisible (inputGainKnob);
+    addAndMakeVisible (volumeKnob);
+    addAndMakeVisible (bassKnob);
+    addAndMakeVisible (midKnob);
+    addAndMakeVisible (trebleKnob);
+    addAndMakeVisible (driveKnob);
+    addAndMakeVisible (presenceKnob);
+
+    // --- Cabinet Bypass 토글 버튼 구성 ---
+    cabBypassButton.setColour (juce::ToggleButton::textColourId, juce::Colours::white);  // 텍스트: 흰색
+    cabBypassButton.setColour (juce::ToggleButton::tickColourId, juce::Colour (0xffff8800));  // 체크: 주황색
+    addAndMakeVisible (cabBypassButton);
+
+    // --- Cabinet Bypass 토글을 APVTS 파라미터에 바인딩 ---
+    // ButtonAttachment가 자동으로 토글 ↔ APVTS 동기화
+    cabBypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+        p.apvts, "cab_bypass", cabBypassButton);
+
+    // --- 에디터 윈도우 크기 설정 ---
     setSize (800, 500);
 }
 
-PluginEditor::~PluginEditor()
-{
-}
+PluginEditor::~PluginEditor() = default;
 
 //==============================================================================
 void PluginEditor::paint (juce::Graphics& g)
 {
-    // --- 배경 ---
-    // 다크 네이비 배경 (#1a1a2e). 전체 다크 테마는 Phase 8에서 완성된다.
+    // --- 다크 배경 ---
+    // #1a1a2e: 진한 파란색/자주색 배경 (시각적 편의성, 밝은 텍스트와 대비)
     g.fillAll (juce::Colour (0xff1a1a2e));
 
-    // --- 타이틀 텍스트 ---
+    // --- 제목 "BassMusicGear" ---
     g.setColour (juce::Colours::white);
-    g.setFont (juce::FontOptions (28.0f).withStyle ("Bold"));
-    g.drawFittedText ("BassMusicGear",
-                      0, 160, getWidth(), 50,
+    g.setFont (juce::FontOptions (24.0f).withStyle ("Bold"));
+    g.drawFittedText ("BassMusicGear", 0, 10, getWidth(), 30,
                       juce::Justification::centred, 1);
 
-    // --- 부제 텍스트 ---
-    // 회색 계열로 개발 진행 중임을 표시한다
-    g.setColour (juce::Colour (0xffaaaaaa));
-    g.setFont (juce::FontOptions (16.0f));
-    g.drawFittedText ("Work in Progress",
-                      0, 210, getWidth(), 30,
-                      juce::Justification::centred, 1);
+    // --- 섹션 라벨 (주황색 강조) ---
+    g.setFont (juce::FontOptions (14.0f));
+    g.setColour (juce::Colour (0xffff8800));  // #ff8800: 주황색
 
-    // --- 빌드 단계 표시 ---
-    // 현재 Phase를 표시해 개발 중 어느 단계인지 한눈에 파악할 수 있게 한다
-    g.setColour (juce::Colour (0xff666688));
-    g.setFont (juce::FontOptions (12.0f));
-    g.drawFittedText ("Phase 0 — Project Skeleton",
-                      0, 250, getWidth(), 20,
+    // Preamp 섹션 라벨
+    g.drawFittedText ("PREAMP", 20, 50, 200, 20, juce::Justification::centred, 1);
+
+    // Tone Stack 섹션 라벨
+    g.drawFittedText ("TONE STACK", 240, 50, 300, 20, juce::Justification::centred, 1);
+
+    // Power Amp 섹션 라벨
+    g.drawFittedText ("POWER AMP", 560, 50, 220, 20, juce::Justification::centred, 1);
+
+    // --- Phase 지시자 (하단) ---
+    // 현재 개발 단계 표시 (향후 Phase 2, Phase 3 추가 기능 표시 예정)
+    g.setColour (juce::Colour (0xff666688));  // 연한 회색
+    g.setFont (juce::FontOptions (11.0f));
+    g.drawFittedText ("Phase 1 -- Core Signal Chain",
+                      0, getHeight() - 20, getWidth(), 20,
                       juce::Justification::centred, 1);
 }
 
 void PluginEditor::resized()
 {
-    // Phase 0: 배치할 자식 컴포넌트가 없으므로 비어 있다.
-    // Phase 1 이후 각 패널(AmpPanel, EffectBlock 등)의 setBounds() 호출이 추가된다.
+    // --- 레이아웃 파라미터 ---
+    const int knobWidth  = 90;   // 노브 너비 (픽셀)
+    const int knobHeight = 100;  // 노브 높이 (라벨 포함)
+    const int topY       = 80;   // 노브 상단 Y 좌표
+    const int gap        = 10;   // 노브 간격
+
+    // --- Preamp 섹션: InputGain, Volume (좌측) ---
+    inputGainKnob.setBounds (30, topY, knobWidth, knobHeight);
+    volumeKnob.setBounds    (30 + knobWidth + gap, topY, knobWidth, knobHeight);
+
+    // --- Tone Stack 섹션: Bass, Mid, Treble (중앙) ---
+    int toneX = 260;  // Tone Stack 섹션 시작 X 좌표
+    bassKnob.setBounds   (toneX, topY, knobWidth, knobHeight);
+    midKnob.setBounds    (toneX + knobWidth + gap, topY, knobWidth, knobHeight);
+    trebleKnob.setBounds (toneX + 2 * (knobWidth + gap), topY, knobWidth, knobHeight);
+
+    // --- Power Amp 섹션: Drive, Presence (우측) ---
+    int ampX = 580;  // Power Amp 섹션 시작 X 좌표
+    driveKnob.setBounds    (ampX, topY, knobWidth, knobHeight);
+    presenceKnob.setBounds (ampX + knobWidth + gap, topY, knobWidth, knobHeight);
+
+    // --- Cabinet Bypass 토글 (노브 아래) ---
+    // 노브들 하단(topY + knobHeight + 30) 위치에 150x25 크기로 배치
+    cabBypassButton.setBounds (30, topY + knobHeight + 30, 150, 25);
 }

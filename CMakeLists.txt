@@ -73,6 +73,7 @@ juce_add_plugin(BassMusicGear
 juce_add_binary_data(BassMusicGear_BinaryData
     SOURCES
         Resources/placeholder.txt
+        Resources/IR/placeholder_ir.wav
 )
 
 # BinaryData 라이브러리는 공유 라이브러리(.so)로 링크될 수 있으므로
@@ -92,6 +93,20 @@ target_sources(BassMusicGear
         Source/PluginProcessor.cpp
         Source/PluginEditor.h
         Source/PluginEditor.cpp
+        Source/DSP/Effects/NoiseGate.h
+        Source/DSP/Effects/NoiseGate.cpp
+        Source/DSP/ToneStack.h
+        Source/DSP/ToneStack.cpp
+        Source/DSP/Preamp.h
+        Source/DSP/Preamp.cpp
+        Source/DSP/PowerAmp.h
+        Source/DSP/PowerAmp.cpp
+        Source/DSP/Cabinet.h
+        Source/DSP/Cabinet.cpp
+        Source/DSP/SignalChain.h
+        Source/DSP/SignalChain.cpp
+        Source/UI/Knob.h
+        Source/UI/Knob.cpp
 )
 
 #==============================================================================
@@ -112,6 +127,7 @@ target_compile_definitions(BassMusicGear
 target_include_directories(BassMusicGear
     PRIVATE
         ASIOSDK/common
+        Source
 )
 
 #==============================================================================

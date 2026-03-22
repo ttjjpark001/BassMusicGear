@@ -1,154 +1,160 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "DSP/SignalChain.h"
 
 /**
- * @brief BassMusicGear 플러그인의 오디오 처리 핵심 클래스
+ * @brief BassMusicGear 플러그인 오디오 프로세서
  *
- * JUCE AudioProcessor를 상속하며, 플러그인의 DSP 진입점 역할을 한다.
- * DAW(또는 Standalone 호스트)가 오디오 버퍼를 이 클래스에 전달하면
- * processBlock()이 매 버퍼마다 호출되어 신호를 처리한다.
+ * 역할:
+ * - JUCE AudioProcessor 인터페이스 구현
+ * - 모든 DSP 모듈 조립 및 신호 체인 관리 (SignalChain)
+ * - APVTS 파라미터 정의 및 관리
+ * - PDC(Plugin Delay Compensation) 지연 시간 보고
+ * - 메인 스레드 타이머: 필터 계수 주기적 갱신 (30Hz)
  *
- * 신호 체인 위치: [오디오 입력] → PluginProcessor → [오디오 출력]
+ * 신호 흐름:
+ *   AudioInput → processBlock() → SignalChain.process() → AudioOutput
  *
- * - Phase 0: 빈 프로세서. APVTS 빈 레이아웃 포함. processBlock은 무음 출력.
- * - Phase 1 이후: SignalChain이 추가되어 실제 DSP가 동작한다.
+ * Phase 1 신호 체인:
+ *   NoiseGate → Preamp → ToneStack → PowerAmp → Cabinet
+ *
+ * APVTS 파라미터:
+ *   - NoiseGate: gate_threshold, gate_attack, gate_hold, gate_release, gate_enabled
+ *   - Preamp: input_gain, volume
+ *   - ToneStack: bass, mid, treble
+ *   - PowerAmp: drive, presence
+ *   - Cabinet: cab_bypass
  */
-class PluginProcessor final : public juce::AudioProcessor
+class PluginProcessor final : public juce::AudioProcessor,
+                               private juce::Timer
 {
 public:
     PluginProcessor();
     ~PluginProcessor() override;
 
-    //==========================================================================
-    // AudioProcessor 인터페이스 — 호스트가 호출하는 생명주기 함수들
-    //==========================================================================
+    // --- JUCE AudioProcessor 오버라이드 ---
 
     /**
-     * @brief DSP 모듈을 초기화하고 처리 준비를 완료한다.
+     * @brief 재생 시작 시 호출: 샘플레이트, 버퍼 크기 설정
      *
-     * 재생 시작 전 호스트가 한 번 호출한다. 샘플레이트·버퍼 크기가 확정된
-     * 시점이므로, 오버샘플링·컨볼루션 등 모든 DSP 모듈의 prepare()를 여기서 실행한다.
-     * 오버샘플링·컨볼루션 지연 합산 후 setLatencySamples()를 반드시 호출해야
-     * DAW의 PDC(Plugin Delay Compensation)가 정확하게 동작한다.
+     * @param sampleRate    샘플 레이트 (Hz, e.g., 44100, 48000)
+     * @param samplesPerBlock 버퍼 크기 (샘플 수, e.g., 512)
      *
-     * @param sampleRate      호스트의 샘플레이트 (Hz)
-     * @param samplesPerBlock 한 버퍼당 최대 샘플 수
-     * @note [메인 스레드] processBlock() 호출 전에 실행이 보장된다.
+     * 여기서:
+     * - SignalChain.prepare() 호출로 모든 DSP 모듈 초기화
+     * - 오버샘플링 필터 및 컨볼루션 버퍼 할당
+     * - setLatencySamples()로 DAW에 지연 시간 보고
+     * @note [오디오 스레드]
      */
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
 
     /**
-     * @brief 재생 중지 시 DSP 모듈 리소스를 해제한다.
-     *
-     * @note [메인 스레드] prepareToPlay()와 쌍으로 호출된다.
+     * @brief 재생 중지 시 호출: 리소스 해제
      */
     void releaseResources() override;
 
     /**
-     * @brief 요청된 버스 레이아웃(입출력 채널 구성)을 지원하는지 검사한다.
+     * @brief 버스 레이아웃 지원 여부 확인
      *
-     * BassMusicGear는 모노 입력 + 스테레오(또는 모노) 출력만 허용한다.
-     * 베이스 기타는 단일 채널이므로 멀티채널 입력은 지원하지 않는다.
-     *
-     * @param layouts 호스트가 요청하는 버스 레이아웃
-     * @return 지원 가능하면 true, 그 외 false
+     * 지원: 모노 입력 + 스테레오 출력 (또는 모노 출력)
      */
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
 
     /**
-     * @brief 매 오디오 버퍼마다 호출되는 DSP 처리 함수.
+     * @brief 매 버퍼마다 오디오 처리 실행
      *
-     * 신호 체인(SignalChain)을 통해 입력 버퍼를 처리하고 결과를 동일 버퍼에 쓴다.
-     * 이 함수는 오디오 스레드에서 실시간으로 호출되므로, 함수 내부에서
-     * 메모리 할당(new/delete), 파일 I/O, mutex, 시스템 콜을 절대 사용하면 안 된다.
+     * @param buffer       입력/출력 오디오 버퍼 (채널별 샘플 배열)
+     * @param midiMessages MIDI 메시지 (이 플러그인에서는 사용 안 함)
      *
-     * @param buffer      입출력 오디오 버퍼 (in-place 처리)
-     * @note [오디오 스레드] 리얼타임 안전(real-time safe) 함수여야 한다.
+     * 처리 순서:
+     *   1. 여분의 출력 채널 클리어
+     *   2. 스테레오 입력 → 모노 채널 0 선택
+     *   3. SignalChain.process() 호출
+     *   4. 모노 결과 → 스테레오 출력 복제
+     * @note [오디오 스레드]
      */
     void processBlock (juce::AudioBuffer<float>& buffer,
                        juce::MidiBuffer& midiMessages) override;
 
-    //==========================================================================
-    // Editor
-    //==========================================================================
-
     /**
-     * @brief UI 에디터 인스턴스를 생성해 반환한다.
-     *
-     * 호스트가 플러그인 창을 열 때 호출된다. 생성된 PluginEditor의 소유권은
-     * 호스트(또는 JUCE 인프라)로 넘어간다.
-     *
-     * @return 새로 생성된 PluginEditor 포인터
-     * @note [메인 스레드]
+     * @brief 에디터(UI) 생성
+     * @return PluginEditor 인스턴스
      */
     juce::AudioProcessorEditor* createEditor() override;
+
+    /**
+     * @brief 에디터 보유 여부
+     * @return true (PluginEditor 구현됨)
+     */
     bool hasEditor() const override;
 
-    //==========================================================================
-    // Plugin 정보
-    //==========================================================================
+    // --- 플러그인 메타데이터 ---
     const juce::String getName() const override;
-
     bool acceptsMidi() const override;
     bool producesMidi() const override;
     bool isMidiEffect() const override;
     double getTailLengthSeconds() const override;
 
-    //==========================================================================
-    // 프로그램 (프리셋) — Phase 0에서는 단일 프로그램만 사용
-    // Phase 7 이후 PresetManager로 교체된다.
-    //==========================================================================
+    // --- 프로그램(프리셋) 관리 (Phase 2 이후 확장) ---
     int getNumPrograms() override;
     int getCurrentProgram() override;
     void setCurrentProgram (int index) override;
     const juce::String getProgramName (int index) override;
     void changeProgramName (int index, const juce::String& newName) override;
 
-    //==========================================================================
-    // 상태 저장/복원 — DAW 세션 저장 및 프리셋 직렬화에 사용
-    //==========================================================================
-
+    // --- 상태 저장/복원 (프리셋, 복구 등) ---
     /**
-     * @brief 현재 APVTS 상태를 바이너리 블록으로 직렬화한다.
+     * @brief APVTS 상태를 바이너리로 직렬화해 저장
      *
-     * DAW가 프로젝트를 저장할 때 호출한다. APVTS 전체 파라미터를 XML로
-     * 변환한 후 바이너리로 인코딩해 destData에 기록한다.
-     *
-     * @param destData 직렬화된 상태가 저장될 메모리 블록
+     * DAW가 플러그인 설정을 저장할 때 호출.
+     * APVTS.copyState() → XML → 바이너리 변환.
      */
     void getStateInformation (juce::MemoryBlock& destData) override;
 
     /**
-     * @brief 바이너리 블록에서 APVTS 상태를 복원한다.
+     * @brief 바이너리 상태 데이터를 로드해 APVTS에 복원
      *
-     * DAW가 프로젝트를 로드하거나 프리셋을 적용할 때 호출한다.
-     * XML 태그 이름이 apvts.state의 타입과 일치하는 경우에만 복원한다.
-     *
-     * @param data        직렬화된 상태 데이터 포인터
-     * @param sizeInBytes 데이터 크기 (바이트)
+     * DAW가 저장된 설정을 불러올 때 호출.
+     * 바이너리 → XML → APVTS.replaceState() 변환.
      */
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    //==========================================================================
-    // APVTS — 파라미터 트리
-    //
-    // 모든 노브·슬라이더·버튼 파라미터는 이 객체에 등록된다.
-    // UI 컴포넌트는 SliderAttachment / ButtonAttachment로 바인딩하고,
-    // 오디오 스레드에서는 getRawParameterValue("id")->load() 로 락 없이 읽는다.
-    //==========================================================================
+    // --- APVTS 인스턴스 (UI 및 DSP 공유) ---
+    /**
+     * 모든 파라미터의 진실의 원천(SSOT).
+     * - 정의: createParameterLayout()
+     * - UI: SliderAttachment / ButtonAttachment로 바인딩
+     * - DSP: getRawParameterValue() → atomic load로 락프리 읽기
+     */
     juce::AudioProcessorValueTreeState apvts;
 
 private:
     /**
-     * @brief APVTS에 등록할 파라미터 레이아웃을 생성한다.
+     * @brief 타이머 콜백 (메인 스레드, ~30Hz)
      *
-     * Phase 0: 파라미터가 없는 빈 레이아웃을 반환한다.
-     * 이후 Phase에서 게인, 톤스택, 이펙터 파라미터가 추가된다.
+     * 역할:
+     * - ToneStack 계수 재계산 (Bass/Mid/Treble 변화 감지)
+     * - PowerAmp Presence 필터 계수 재계산
      *
-     * @return 파라미터 레이아웃 객체
+     * 이 함수 내에서만 주기적으로 계수를 갱신하므로,
+     * 메인 스레드의 느린 계산이 오디오 스레드를 블로킹하지 않는다.
+     * @note [메인 스레드]
+     */
+    void timerCallback() override;
+
+    /**
+     * @brief APVTS 파라미터 레이아웃 정의
+     *
+     * 모든 파라미터(노브, 버튼 등)의 ID, 범위, 기본값 등을 정의.
+     * 생성자에서 호출되어 apvts 초기화에 사용됨.
+     *
+     * @return ParameterLayout (생성자 전달 인수)
      */
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
+    // --- DSP 신호 체인 ---
+    SignalChain signalChain;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginProcessor)
 };

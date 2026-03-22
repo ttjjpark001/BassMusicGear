@@ -71,6 +71,25 @@ $ARGUMENTS
 - `테스트 기준`
 - `실행 프롬프트`
 
+**0-D. BackLog.md에서 이월 항목 로드**
+
+`BackLog.md`를 읽어 Phase N에서 처리해야 할 항목을 추출한다:
+```
+파일 경로: E:/Vibe Coding/Claude Code/BassMusicGear/BackLog.md
+```
+
+다음 두 종류의 항목을 추출한다:
+
+1. **미구현 항목** — `## 미구현 항목` 섹션에서 `Phase N` 이하(≤N)에 해당하는 항목
+   - PLAN.md의 `✅ CARRY` 섹션에 이미 포함된 항목은 중복 제외
+   - 포함되지 않은 항목만 **BackLog 이월 항목**으로 기록
+
+2. **임시 수정 복원 항목** — `## 임시 수정 — Phase N에서 복원 필요` 섹션의 항목
+   - 해당 Phase가 N과 일치하는 항목만 추출
+
+추출 결과를 `BACKLOG_CARRY`로 기록한다.
+항목이 없으면 `BACKLOG_CARRY = 없음`으로 기록하고 넘어간다.
+
 ---
 
 ### STEP 1: ToolCreator — 커맨드 및 스크립트 준비
@@ -101,12 +120,14 @@ $ARGUMENTS
 
 Phase N 정보:
 - 목표: [0-C에서 추출한 목표]
-- ✅ CARRY: [이월 항목, 있을 경우]
+- ✅ CARRY (PLAN): [PLAN.md 이월 항목, 있을 경우]
+- ✅ CARRY (BackLog): [0-D에서 추출한 BACKLOG_CARRY, 없으면 '없음']
 - P0 구현 항목: [구현 항목 목록]
 - P1 항목 (건너뜀): [P1 항목 목록]
 - 실행 프롬프트: [실행 프롬프트 전문]
 
 PRD.md와 CLAUDE.md의 관련 섹션을 함께 참고해서 구현해줘.
+BackLog CARRY 항목은 P0 항목과 동일한 우선순위로 반드시 구현한다.
 P1 항목은 건너뛰고 P0 항목만 구현한다."
 ```
 
@@ -239,6 +260,9 @@ Phase N: [Phase 이름]
 스모크 테스트 결과:
   [자동 확인 항목 결과 목록]
   [수동 확인 필요 항목 목록 — Tests/SmokeTest_Phase[N].md 참고]
+
+BackLog 이월 항목 처리:
+  - [BACKLOG_CARRY 항목별 구현 완료 여부, 없으면 "없음"]
 
 P1 이월 항목 (다음 Phase에서 처리):
   - [P1 항목 목록, 없으면 "없음"]

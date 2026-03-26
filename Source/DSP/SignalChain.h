@@ -7,30 +7,36 @@
 #include "ToneStack.h"
 #include "PowerAmp.h"
 #include "Cabinet.h"
+#include "../Models/AmpModel.h"
+#include "../Models/AmpModelLibrary.h"
 
 /**
- * @brief 완전한 신호 처리 체인을 조립하고 관리
+ * @brief 완전한 베이스 신호 처리 체인 조립 및 관리
  *
- * Phase 1 신호 순서: NoiseGate → Preamp → ToneStack → PowerAmp → Cabinet
+ * **신호 체인 전체 순서**:
+ * 입력 → [NoiseGate] → [Preamp(4xOS)] → [ToneStack(모델별)] → [PowerAmp(Drive/Presence/Sag)] → [Cabinet(IR)] → 출력
  *
- * 신호 체인 설명:
- *   1. NoiseGate: 배경 노이즈 억제 (히스테리시스 게이트)
- *   2. Preamp: 드라이브 + 4배 오버샘플링 웨이브쉐이핑 (튜브 캐릭터)
- *   3. ToneStack: Fender TMB 톤스택 (Bass/Mid/Treble 음질 조절)
- *   4. PowerAmp: 포화 + Presence 고주파 필터 (음력 있는 톤)
- *   5. Cabinet: 스피커/캐비닛 IR 컨볼루션 (음향 특성)
+ * **각 블록의 역할**:
+ * 1. **NoiseGate**: 허밍 및 배경 노이즈 제거 (히스테리시스 게이트)
+ * 2. **Preamp**: 입력 이득 스테이징 + 타입별 웨이브쉐이핑 (4배 오버샘플링)
+ *    - Tube12AX7Cascade: 비대칭 tanh
+ *    - JFETParallel: 평행 드라이/클린 혼합
+ *    - ClassDLinear: 선형 증폭
+ * 3. **ToneStack**: 톤 컨트롤 (모델별 고유한 토폴로지)
+ *    - TMB, Baxandall, James, BaxandallGrunt, MarkbassFourBand
+ * 4. **PowerAmp**: 포화 + 고음 강조 필터 + Sag(튜브만)
+ * 5. **Cabinet**: 콘볼루션으로 캐비닛 스피커 시뮬레이션 (5종 내장 IR)
  *
- * 이후 Phase에서 추가:
- *   - Tuner: YIN 피치 트래킹 (UI 튜너 디스플레이용)
- *   - Compressor: VCA/광학 컴프레서
- *   - BiAmpCrossover: Linkwitz-Riley 4차 크로스오버
- *   - Pre-FX / Post-FX 섹션
- *   - GraphicEQ: 10밴드 고정주파수 EQ
- *   - DIBlend: 클린 DI + 프로세스드 신호 혼합
+ * **모델 전환 메커니즘** (setAmpModel):
+ * - ToneStack: 토폴로지 재설정 (compute*Coefficients 로직 선택)
+ * - Preamp: 타입 변경 (Tube/JFET/ClassD)
+ * - PowerAmp: 타입 + Sag 활성화 여부 설정
+ * - Cabinet: 기본 IR 로드
  *
- * 멀티 스레드 설계:
- *   - prepare() / reset() / process(): 오디오 스레드
- *   - connectParameters() / updateCoefficientsFromMainThread(): 메인 스레드
+ * **파라미터 동기화**:
+ * - connectParameters(): 생성 시 APVTS 파라미터를 각 블록에 등록
+ * - updateCoefficientsFromMainThread(): 매 프레임 메인 스레드에서 변경된 파라미터 감지 및 반영
+ *   (오디오 스레드 안전성: 변경 시에만 호출)
  */
 class SignalChain
 {
@@ -38,79 +44,129 @@ public:
     SignalChain() = default;
 
     /**
-     * @brief 모든 DSP 모듈의 처리 스펙 설정
+     * @brief 신호 체인 전체를 DSP 초기화한다.
      *
-     * @param spec 샘플레이트, 버퍼 크기 등 처리 정보
-     * @note [오디오 스레드] prepareToPlay()에서 호출됨
+     * 모든 블록(Gate/Preamp/ToneStack/PowerAmp/Cabinet)을 순서대로 prepare한다.
+     * 오버샘플링, 필터, 컨볼루션 등의 버퍼를 할당한다.
+     *
+     * @param spec  오디오 스펙 (sampleRate, samplesPerBlock)
+     * @note [메인 스레드] PluginProcessor::prepareToPlay()에서 호출된다.
      */
     void prepare (const juce::dsp::ProcessSpec& spec);
 
     /**
-     * @brief 현재 버퍼에 신호 체인 전체 적용
+     * @brief 오디오 버퍼를 신호 체인 전체에 통과시킨다.
      *
-     * 순서: Gate → Preamp → ToneStack → PowerAmp → Cabinet
+     * Gate → Preamp → ToneStack → PowerAmp → Cabinet 순서로 처리.
+     * 각 블록은 In-place로 버퍼를 수정한다.
      *
-     * @param buffer 모노 입력 버퍼 (채널 0)
-     * @note [오디오 스레드] processBlock()에서 매 버퍼마다 호출됨
+     * @param buffer  모노 오디오 버퍼
+     * @note [오디오 스레드] processBlock()에서 매 버퍼마다 호출된다.
      */
     void process (juce::AudioBuffer<float>& buffer);
 
     /**
-     * @brief 모든 DSP 모듈 상태 초기화
+     * @brief 모든 필터 버퍼를 클리어한다.
+     *
+     * @note [오디오 스레드] 재생 중지 또는 모델 전환 시 호출.
      */
     void reset();
 
     /**
-     * @brief 신호 체인 전체 지연 시간(샘플 단위) 반환
+     * @brief 전체 신호 체인의 지연을 샘플 단위로 반환한다.
      *
-     * 오버샘플링(Preamp) + 컨볼루션(Cabinet) 지연의 합.
-     * PluginProcessor의 setLatencySamples()로 DAW에 보고되어
-     * Plugin Delay Compensation(PDC)을 정확하게 한다.
+     * Preamp 오버샘플링 지연 + Cabinet 컨볼루션 지연 합산.
+     * PluginProcessor가 이 값을 DAW에 보고 (PDC - Plugin Delay Compensation).
      *
-     * @return 전체 지연 샘플 수
+     * @return  총 지연 샘플 수
+     * @note    DAW가 다른 트랙과 시간 정렬에 사용.
      */
     int getTotalLatencyInSamples() const;
 
     /**
-     * @brief APVTS 파라미터 포인터를 모든 DSP 모듈에 연결한다.
+     * @brief APVTS 파라미터를 각 DSP 블록에 등록한다.
      *
-     * 메인 스레드에서 PluginProcessor 생성자 또는 초기화 시점에 호출.
-     * 이후 각 모듈은 락프리로 파라미터 값을 읽을 수 있다.
+     * 각 블록이 원자적 포인터를 통해 파라미터 변경을 폴링할 수 있도록 한다.
+     * 모든 노브, 슬라이더, 토글의 ID를 연결.
      *
-     * @param apvts PluginProcessor의 APVTS 인스턴스
-     * @note [메인 스레드 전용]
+     * @param apvts  APVTS 인스턴스
+     * @note [메인 스레드] 생성 시 호출된다.
      */
     void connectParameters (juce::AudioProcessorValueTreeState& apvts);
 
     /**
-     * @brief 메인 스레드에서만 계산 가능한 필터 계수를 갱신한다.
+     * @brief 변경된 APVTS 파라미터를 각 블록에 반영한다.
      *
-     * ToneStack(TMB 계수) 및 PowerAmp(Presence 필터)의 계수는
-     * 복잡한 수식 계산이 필요하므로 메인 스레드에서만 업데이트.
-     * 계수는 원자적으로 오디오 스레드로 전달된다.
+     * Bass/Mid/Treble/Presence/VPF/VLE/Grunt/Attack/MidPosition 등
+     * 메인 스레드에서만 계산할 수 있는 계수 갱신을 수행한다.
+     * 변경 감지(이전값 비교)로 불필요한 재계산을 회피.
      *
-     * PluginProcessor의 timerCallback()에서 30Hz로 호출되어
-     * 파라미터 변화에 빠르게 반응한다.
-     *
-     * @param apvts PluginProcessor의 APVTS 인스턴스
-     * @note [메인 스레드 전용]
+     * @param apvts  APVTS (파라미터값 읽기)
+     * @note [메인 스레드] PluginProcessor::timerCallback()에서 주기적 호출.
+     *       또는 APVTS 리스너로 필요시에만 호출 가능 (개선 여지).
      */
     void updateCoefficientsFromMainThread (juce::AudioProcessorValueTreeState& apvts);
 
-private:
-    // Phase 1 DSP 모듈들
-    NoiseGate noiseGate;   // 노이즈 게이트
-    Preamp    preamp;      // 프리앰프 + 드라이브
-    ToneStack toneStack;   // TMB 톤스택
-    PowerAmp  powerAmp;    // 파워앰프 포화 + Presence
-    Cabinet   cabinet;     // IR 컨볼루션
+    /**
+     * @brief 앰프 모델을 전환한다.
+     *
+     * 선택된 AmpModel에 따라 신호 체인 각 블록의 토폴로지/타입을 변경:
+     * - ToneStack::setType(toneStack) 및 계수 초기화
+     * - Preamp::setPreampType(preamp)
+     * - PowerAmp::setPowerAmpType(powerAmp, sagEnabled)
+     * - Cabinet: 기본 IR 로드
+     * - 모든 필터/버퍼 reset()
+     *
+     * @param modelId  AmpModelId (AmericanVintage, TweedBass, BritishStack, ModernMicro, ItalianClean)
+     * @note [메인 스레드 전용] UI의 앰프 모델 ComboBox 변경 시 호출된다.
+     */
+    void setAmpModel (AmpModelId modelId);
 
-    // 메인 스레드 변화 감지용 이전 파라미터 값
-    // 30Hz 타이머에서 매번 재계산하는 대신, 값이 바뀔 때만 계수를 갱신한다.
-    float prevBass     = -1.0f;
-    float prevMid      = -1.0f;
-    float prevTreble   = -1.0f;
-    float prevPresence = -1.0f;
+    /**
+     * @brief Cabinet에 접근하여 IR을 로드한다.
+     *
+     * CabinetSelector UI에서 IR 변경 시 사용.
+     * Cabinet::loadIRFromBinaryData()를 호출할 수 있다.
+     *
+     * @return  Cabinet 인스턴스 참조
+     * @note    [메인 스레드] IR 로드는 내부적으로 백그라운드 스레드에서 진행.
+     */
+    Cabinet& getCabinet() { return cabinet; }
+
+private:
+    /** IR 이름 문자열을 cab_ir 파라미터 인덱스(0~4)로 변환한다. */
+    static int irNameToIndex (const juce::String& irName)
+    {
+        if (irName == "ir_8x10_svt_wav")     return 0;
+        if (irName == "ir_4x10_jbl_wav")     return 1;
+        if (irName == "ir_1x15_vintage_wav") return 2;
+        if (irName == "ir_2x12_british_wav") return 3;
+        if (irName == "ir_2x10_modern_wav")  return 4;
+        return 0; // fallback
+    }
+
+    // --- 신호 체인 5개 블록 ---
+    NoiseGate noiseGate;    // 히스테리시스 게이트: 노이즈 제거
+    Preamp    preamp;       // 입력 이득 + 웨이브쉐이핑 (4x 오버샘플링)
+    ToneStack toneStack;    // 모델별 톤 컨트롤 EQ
+    PowerAmp  powerAmp;     // 포화 + Presence 필터 + Sag 엔벨로프
+    Cabinet   cabinet;      // 콘볼루션 캐비닛 IR
+
+    AmpModelId currentModelId = AmpModelId::TweedBass;  // 현재 선택된 앰프 모델
+
+    // --- 메인 스레드: 파라미터 변경 감지 (이전값 기억) ---
+    // updateCoefficientsFromMainThread()에서 현재값과 비교하여
+    // 변경된 파라미터만 각 블록에 반영 (불필요한 계산 회피)
+    float prevBass      = -1.0f;    // 이전 Bass 값
+    float prevMid       = -1.0f;    // 이전 Mid 값
+    float prevTreble    = -1.0f;    // 이전 Treble 값
+    float prevPresence  = -1.0f;    // 이전 Presence 값
+    float prevVpf       = -1.0f;    // 이전 VPF 값 (Italian Clean)
+    float prevVle       = -1.0f;    // 이전 VLE 값 (Italian Clean)
+    float prevGrunt     = -1.0f;    // 이전 Grunt 값 (Modern Micro)
+    float prevAttack    = -1.0f;    // 이전 Attack 값 (Modern Micro)
+    int   prevMidPos    = -1;       // 이전 Mid Position (American Vintage)
+    int   prevAmpModel  = -1;       // 이전 앰프 모델 인덱스
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SignalChain)
 };

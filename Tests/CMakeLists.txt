@@ -12,6 +12,7 @@ target_sources(BassMusicGear_Tests
     PRIVATE
         "${CMAKE_SOURCE_DIR}/Source/DSP/ToneStack.cpp"
         "${CMAKE_SOURCE_DIR}/Source/DSP/Preamp.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/Models/AmpModelLibrary.cpp"
 )
 
 target_compile_features(BassMusicGear_Tests PRIVATE cxx_std_17)

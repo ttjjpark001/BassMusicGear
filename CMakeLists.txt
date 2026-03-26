@@ -74,6 +74,11 @@ juce_add_binary_data(BassMusicGear_BinaryData
     SOURCES
         Resources/placeholder.txt
         Resources/IR/placeholder_ir.wav
+        Resources/IR/ir_8x10_svt.wav
+        Resources/IR/ir_4x10_jbl.wav
+        Resources/IR/ir_1x15_vintage.wav
+        Resources/IR/ir_2x12_british.wav
+        Resources/IR/ir_2x10_modern.wav
 )
 
 # BinaryData 라이브러리는 공유 라이브러리(.so)로 링크될 수 있으므로
@@ -107,6 +112,13 @@ target_sources(BassMusicGear
         Source/DSP/SignalChain.cpp
         Source/UI/Knob.h
         Source/UI/Knob.cpp
+        Source/UI/AmpPanel.h
+        Source/UI/AmpPanel.cpp
+        Source/UI/CabinetSelector.h
+        Source/UI/CabinetSelector.cpp
+        Source/Models/AmpModel.h
+        Source/Models/AmpModelLibrary.h
+        Source/Models/AmpModelLibrary.cpp
 )
 
 #==============================================================================

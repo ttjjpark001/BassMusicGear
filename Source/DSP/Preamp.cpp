@@ -4,83 +4,162 @@ Preamp::Preamp() = default;
 
 void Preamp::prepare (const juce::dsp::ProcessSpec& spec)
 {
-    // 오버샘플링 처리 초기화
-    // 오버샘플링은 모노 입력을 기대하며, 버퍼 크기를 미리 알아야 한다.
     oversampling.initProcessing (spec.maximumBlockSize);
+
+    // DC 블로킹 필터 계수 계산: 1차 하이패스 ~5Hz
+    // R = 1 - (2*pi*fc / sampleRate), fc = 5Hz
+    dcBlockerCoeff = 1.0f - (juce::MathConstants<float>::twoPi * 5.0f
+                             / static_cast<float> (spec.sampleRate));
+    dcPrevInput  = 0.0f;
+    dcPrevOutput = 0.0f;
 }
 
 void Preamp::reset()
 {
-    // 오버샘플링 상태 초기화 (업샘플링 필터의 지연 라인)
     oversampling.reset();
+    dcPrevInput  = 0.0f;
+    dcPrevOutput = 0.0f;
 }
 
 int Preamp::getLatencyInSamples() const
 {
-    // 오버샘플링 필터의 지연 시간 반환
-    // 이 값은 PluginProcessor에서 PDC(Plugin Delay Compensation) 보고에 사용된다.
-    // DAW가 이 값을 알면 다른 트랙과 시간을 정확히 맞출 수 있다.
     return static_cast<int> (oversampling.getLatencyInSamples());
+}
+
+void Preamp::setPreampType (PreampType type)
+{
+    currentType = type;
 }
 
 void Preamp::setParameterPointers (std::atomic<float>* inputGain,
                                     std::atomic<float>* volume)
 {
-    // APVTS 파라미터 포인터를 캐시해두면, process()에서 락프리로 읽을 수 있다.
     inputGainParam = inputGain;
     volumeParam    = volume;
 }
 
+//==============================================================================
+// Tube 12AX7 Cascade: asymmetric tanh soft clipping (even harmonics)
+//==============================================================================
+
+void Preamp::processTube12AX7 (float* data, size_t numSamples,
+                                float inGain, float outGain)
+{
+    for (size_t i = 0; i < numSamples; ++i)
+    {
+        float x = inGain * data[i];
+        // Asymmetric tanh: x*x term introduces even harmonics (tube character)
+        data[i] = std::tanh (x + 0.1f * x * x) * outGain;
+    }
+}
+
+//==============================================================================
+// JFET Parallel: parallel clean + driven paths (Modern Micro character)
+//==============================================================================
+
+void Preamp::processJFETParallel (float* data, size_t numSamples,
+                                   float inGain, float outGain)
+{
+    // Parallel structure: clean path + driven path mixed together
+    // This creates a distinctive modern bass tone with clarity + grit
+    const float driveAmount = std::min (inGain / 10.0f, 1.0f);  // normalize drive level
+    const float cleanMix = 1.0f - driveAmount * 0.5f;           // clean path stays present
+    const float driveMix = driveAmount;
+
+    for (size_t i = 0; i < numSamples; ++i)
+    {
+        float x = inGain * data[i];
+        float clean = data[i];  // undriven signal
+
+        // JFET asymmetric clipping: softer than tube, sharper knee
+        float driven = x;
+        if (driven > 0.0f)
+            driven = std::tanh (driven * 1.5f);          // positive: softer clip
+        else
+            driven = std::tanh (driven * 2.0f) * 0.8f;   // negative: harder clip, lower headroom
+
+        // Parallel mix
+        data[i] = (cleanMix * clean + driveMix * driven) * outGain;
+    }
+}
+
+//==============================================================================
+// Class D Linear: pure gain, no clipping (Italian Clean headroom)
+//==============================================================================
+
+void Preamp::processClassDLinear (float* data, size_t numSamples,
+                                   float inGain, float outGain)
+{
+    const float totalGain = inGain * outGain;
+    for (size_t i = 0; i < numSamples; ++i)
+        data[i] *= totalGain;
+}
+
+//==============================================================================
+// Process (audio thread)
+//==============================================================================
+
 void Preamp::process (juce::AudioBuffer<float>& buffer)
 {
-    // --- 파라미터 읽기 (락프리 atomic load) ---
-    const float gainDB  = inputGainParam != nullptr ? inputGainParam->load() : 0.0f;
-    const float volDB   = volumeParam    != nullptr ? volumeParam->load()    : 0.0f;
-    // dB → 선형 진폭 변환 (20 * log10(gain) 역변환)
-    const float inGain  = juce::Decibels::decibelsToGain (gainDB);
+    const float gainDB = inputGainParam != nullptr ? inputGainParam->load() : 0.0f;
+    const float volDB  = volumeParam    != nullptr ? volumeParam->load()    : 0.0f;
+    const float inGain = juce::Decibels::decibelsToGain (gainDB);
     const float outGain = juce::Decibels::decibelsToGain (volDB);
 
-    // --- AudioBlock 생성 (모노, 채널 0) ---
     auto block = juce::dsp::AudioBlock<float> (buffer).getSingleChannelBlock (0);
 
-    // --- 4배 업샘플링 ---
-    // 원본 샘플레이트(e.g., 44.1kHz)를 4배(176.4kHz)로 상향
+    // Class D Linear doesn't need oversampling (no nonlinearity)
+    if (currentType == PreampType::ClassDLinear)
+    {
+        processClassDLinear (block.getChannelPointer (0),
+                             static_cast<size_t> (block.getNumSamples()),
+                             inGain, outGain);
+        return;
+    }
+
+    // 4x oversampling for nonlinear processing
     auto oversampledBlock = oversampling.processSamplesUp (block);
 
-    // --- 오버샘플된 속도에서 웨이브쉐이핑 처리 ---
-    // 비선형 함수(tanh)는 많은 고조파를 생성하므로,
-    // 높은 샘플레이트에서 처리해 앨리어싱을 최소화한다.
     for (size_t ch = 0; ch < oversampledBlock.getNumChannels(); ++ch)
     {
         auto* data = oversampledBlock.getChannelPointer (ch);
-        for (size_t i = 0; i < oversampledBlock.getNumSamples(); ++i)
-        {
-            float x = inGain * data[i];
+        auto numSamples = oversampledBlock.getNumSamples();
 
-            // --- 비대칭 tanh 소프트 클리핑 (튜브 캐릭터) ---
-            // tanh(x + 0.1*x*x): x*x 항이 비대칭성 도입
-            //
-            // 물리적 의미:
-            //   - tanh(x): 선형 → 비선형 부드러운 전이 (포화 곡선)
-            //   - +0.1*x*x 항: 양의 피크 쪽을 더 강하게 누움
-            //     → 양의 반파(positive half) 쪽 포화 전압 낮음
-            //     → 음의 반파(negative half) 상대적으로 약하게 누움
-            //     → 비대칭 왜곡 → 짝수 고조파 강조 (2f, 4f, 6f, ...)
-            //
-            // 튜브 앰프 효과:
-            //   실제 진공관은 비선형 I-V 특성으로 짝수 고조파가 풍부하다.
-            //   이 비대칭 웨이브쉐이핑은 그 음질을 에뮬레이트한다.
-            //
-            // 계수 0.1f: 경험적으로 결정한 비대칭 정도
-            //   - 0 → 완전 대칭 tanh
-            //   - 0.1f → 부드러운 튜브 톤
-            //   - 더 크면 → 더 공격적인 클리핑
-            data[i] = std::tanh (x + 0.1f * x * x) * outGain;
+        switch (currentType)
+        {
+            case PreampType::Tube12AX7Cascade:
+                processTube12AX7 (data, numSamples, inGain, outGain);
+                break;
+            case PreampType::JFETParallel:
+                processJFETParallel (data, numSamples, inGain, outGain);
+                break;
+            default:
+                break;
         }
     }
 
-    // --- 4배 다운샘플링 (원본 샘플레이트로 복원) ---
-    // 다운샘플링 필터가 나이퀴스트(오버샘플 전 SR/2) 위의
-    // 고조파와 앨리어싱 성분을 자동으로 제거한다.
     oversampling.processSamplesDown (block);
+
+    // --- DC 블로킹 필터 적용 ---
+    // 비대칭 웨이브쉐이핑(Tube12AX7, JFET)이 DC 오프셋을 생성하므로 제거한다.
+    // 1차 하이패스: y[n] = x[n] - x[n-1] + R * y[n-1]
+    {
+        auto* blockData = block.getChannelPointer (0);
+        auto numBlockSamples = block.getNumSamples();
+        const float R = dcBlockerCoeff;
+        float xPrev = dcPrevInput;
+        float yPrev = dcPrevOutput;
+
+        for (size_t i = 0; i < numBlockSamples; ++i)
+        {
+            float x = blockData[i];
+            float y = x - xPrev + R * yPrev;
+            xPrev = x;
+            yPrev = y;
+            blockData[i] = y;
+        }
+
+        dcPrevInput  = xPrev;
+        dcPrevOutput = yPrev;
+    }
 }

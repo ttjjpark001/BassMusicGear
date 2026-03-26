@@ -322,3 +322,203 @@ TEST_CASE ("Preamp: output amplitude is bounded (tanh soft-clipping)",
     // 파라미터 없을 때 outGain=1이므로 출력 최대 ≈ 2 이하 예상
     REQUIRE (maxAbs < 5.0f);
 }
+
+//==============================================================================
+// Phase 2: JFET 병렬 구조 신호 무결성 검증
+//==============================================================================
+
+TEST_CASE ("Preamp JFET: model switch produces non-zero bounded output",
+           "[preamp][jfet][phase2]")
+{
+    // Phase 2 요구사항: JFET 병렬 구조(Modern Micro 프리앰프)로 전환 후
+    // 신호가 정상적으로 출력되며 NaN/Inf 없이 유한 범위에 바운딩되는지 확인.
+    //
+    // JFET 병렬 구조:
+    //   output = cleanMix * clean + driveMix * tanh_jfet(x * inGain)
+    //   driveAmount = min(inGain/10, 1.0)
+    //   cleanMix = 1 - driveAmount * 0.5   (clean path 항상 존재)
+    //   driveMix = driveAmount
+    // inGain=1(기본값 0dB)이면 driveAmount=0.1, cleanMix=0.95, driveMix=0.1
+    // → 출력은 대부분 클린 신호
+    constexpr double sampleRate = 44100.0;
+    constexpr int numSamples    = 2048;
+
+    Preamp preamp;
+    juce::dsp::ProcessSpec spec;
+    spec.sampleRate       = sampleRate;
+    spec.maximumBlockSize = static_cast<juce::uint32> (numSamples);
+    spec.numChannels      = 1;
+    preamp.prepare (spec);
+
+    // Modern Micro → JFET 병렬 타입으로 전환
+    preamp.setPreampType (PreampType::JFETParallel);
+
+    juce::AudioBuffer<float> buffer (1, numSamples);
+    fillSine (buffer, 440.0f, sampleRate, 0.5f);
+
+    preamp.process (buffer);
+
+    const float* data = buffer.getReadPointer (0);
+    float rms    = 0.0f;
+    float maxAbs = 0.0f;
+    bool hasNaN  = false;
+    bool hasInf  = false;
+
+    for (int i = 0; i < numSamples; ++i)
+    {
+        rms    += data[i] * data[i];
+        maxAbs  = std::max (maxAbs, std::abs (data[i]));
+        hasNaN |= std::isnan (data[i]);
+        hasInf |= std::isinf (data[i]);
+    }
+    rms = std::sqrt (rms / numSamples);
+
+    INFO ("JFET output RMS: " << rms << ", peak: " << maxAbs);
+
+    // 신호가 존재해야 한다 (무음 아님)
+    REQUIRE (rms > 0.001f);
+    // 유한 범위에 바운딩되어야 한다 (JFET clean path + tanh driven path 합산)
+    REQUIRE (maxAbs < 10.0f);
+    // NaN/Inf 없어야 한다
+    REQUIRE_FALSE (hasNaN);
+    REQUIRE_FALSE (hasInf);
+}
+
+TEST_CASE ("Preamp JFET: hard drive input is bounded by nonlinear saturation",
+           "[preamp][jfet][phase2]")
+{
+    // JFET 타입에서 큰 입력(과포화)을 줬을 때도 출력이 유한 범위 내에 있어야 한다.
+    // JFET 구현: driven path가 tanh로 클리핑되므로 절대로 발산하지 않아야 한다.
+    constexpr double sampleRate = 44100.0;
+    constexpr int numSamples    = 2048;
+
+    Preamp preamp;
+    juce::dsp::ProcessSpec spec;
+    spec.sampleRate       = sampleRate;
+    spec.maximumBlockSize = static_cast<juce::uint32> (numSamples);
+    spec.numChannels      = 1;
+    preamp.prepare (spec);
+
+    preamp.setPreampType (PreampType::JFETParallel);
+
+    juce::AudioBuffer<float> buffer (1, numSamples);
+    // 과포화 입력 (피크 10.0)
+    for (int i = 0; i < numSamples; ++i)
+        buffer.setSample (0, i, 10.0f * std::sin (2.0f * juce::MathConstants<float>::pi
+                                                   * 440.0f / static_cast<float> (sampleRate)
+                                                   * static_cast<float> (i)));
+
+    preamp.process (buffer);
+
+    const float* data = buffer.getReadPointer (0);
+    float maxAbs = 0.0f;
+    bool hasNaN  = false;
+    bool hasInf  = false;
+
+    for (int i = 0; i < numSamples; ++i)
+    {
+        maxAbs  = std::max (maxAbs, std::abs (data[i]));
+        hasNaN |= std::isnan (data[i]);
+        hasInf |= std::isinf (data[i]);
+    }
+
+    INFO ("JFET hard drive peak: " << maxAbs);
+
+    // 과포화에서도 NaN/Inf 없어야 한다
+    REQUIRE_FALSE (hasNaN);
+    REQUIRE_FALSE (hasInf);
+    // 출력이 입력 피크(10.0)보다 훨씬 낮아야 한다 (tanh saturation)
+    REQUIRE (maxAbs < 10.0f);
+}
+
+TEST_CASE ("Preamp JFET: clean path contribution is audible at low drive",
+           "[preamp][jfet][phase2]")
+{
+    // JFET 병렬 구조에서는 cleanMix가 항상 0보다 크므로,
+    // 출력에 클린 신호 성분이 반드시 포함된다.
+    // 이를 검증: JFET 출력 RMS가 입력 RMS의 일정 비율(10%)보다 커야 함.
+    // (클린 path가 완전히 억제되지 않아야 한다는 구조적 특성 확인)
+    constexpr double sampleRate = 44100.0;
+    constexpr int numSamples    = 4096;
+    constexpr float inputAmplitude = 0.5f;
+
+    Preamp preamp;
+    juce::dsp::ProcessSpec spec;
+    spec.sampleRate       = sampleRate;
+    spec.maximumBlockSize = static_cast<juce::uint32> (numSamples);
+    spec.numChannels      = 1;
+    preamp.prepare (spec);
+
+    preamp.setPreampType (PreampType::JFETParallel);
+
+    // 입력 RMS 계산용 버퍼
+    juce::AudioBuffer<float> inputBuffer (1, numSamples);
+    fillSine (inputBuffer, 440.0f, sampleRate, inputAmplitude);
+    float inputRms = 0.0f;
+    for (int i = 0; i < numSamples; ++i)
+        inputRms += inputBuffer.getSample (0, i) * inputBuffer.getSample (0, i);
+    inputRms = std::sqrt (inputRms / numSamples);
+
+    // 처리
+    juce::AudioBuffer<float> buffer (1, numSamples);
+    fillSine (buffer, 440.0f, sampleRate, inputAmplitude);
+    preamp.process (buffer);
+
+    float outputRms = 0.0f;
+    for (int i = 0; i < numSamples; ++i)
+        outputRms += buffer.getSample (0, i) * buffer.getSample (0, i);
+    outputRms = std::sqrt (outputRms / numSamples);
+
+    INFO ("Input RMS: " << inputRms << ", JFET output RMS: " << outputRms);
+    INFO ("Ratio: " << (outputRms / inputRms));
+
+    // 출력 RMS는 입력 RMS의 10% 이상이어야 한다 (클린 path가 반드시 존재)
+    // inGain=1(0dB) 시 cleanMix=0.95이므로 출력 ≈ 입력 수준
+    REQUIRE (outputRms > inputRms * 0.1f);
+}
+
+TEST_CASE ("Preamp: ClassDLinear (Italian Clean) is truly linear — no saturation",
+           "[preamp][classd][phase2]")
+{
+    // Italian Clean 프리앰프(ClassDLinear)는 웨이브쉐이핑이 없으므로
+    // 출력이 입력에 선형 비례해야 한다.
+    // inGain=1.0, outGain=1.0 시 output = input * 1.0 * 1.0 = input
+    constexpr double sampleRate = 44100.0;
+    constexpr int numSamples    = 4096;
+
+    Preamp preamp;
+    juce::dsp::ProcessSpec spec;
+    spec.sampleRate       = sampleRate;
+    spec.maximumBlockSize = static_cast<juce::uint32> (numSamples);
+    spec.numChannels      = 1;
+    preamp.prepare (spec);
+
+    preamp.setPreampType (PreampType::ClassDLinear);
+
+    // 0.5 진폭과 0.25 진폭으로 각각 처리하여 선형성 확인
+    auto measureOutputRms = [&] (float amplitude) -> float
+    {
+        juce::AudioBuffer<float> buf (1, numSamples);
+        fillSine (buf, 440.0f, sampleRate, amplitude);
+
+        // 새 Preamp 인스턴스로 독립적으로 측정
+        Preamp p;
+        p.prepare (spec);
+        p.setPreampType (PreampType::ClassDLinear);
+        p.process (buf);
+
+        float rms = 0.0f;
+        for (int i = 0; i < numSamples; ++i)
+            rms += buf.getSample (0, i) * buf.getSample (0, i);
+        return std::sqrt (rms / numSamples);
+    };
+
+    float rms1 = measureOutputRms (0.5f);
+    float rms2 = measureOutputRms (0.25f);
+
+    INFO ("ClassD RMS at amp=0.5: " << rms1 << ", at amp=0.25: " << rms2);
+    INFO ("Ratio (should be ~2.0): " << (rms1 / rms2));
+
+    // 출력 RMS 비율이 입력 진폭 비율(2:1)과 일치해야 한다 (10% 허용 오차)
+    REQUIRE (rms1 / rms2 == Catch::Approx (2.0f).margin (0.2f));
+}

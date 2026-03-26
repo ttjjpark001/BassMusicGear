@@ -1,14 +1,11 @@
 #include "SignalChain.h"
+#include <BinaryData.h>
 
 void SignalChain::prepare (const juce::dsp::ProcessSpec& spec)
 {
-    // --- 모든 DSP 모듈을 모노로 설정 ---
-    // 베이스 입력은 항상 모노(채널 0)이므로 모든 모듈도 모노 처리
-    // 출력은 UI 패널에서 스테레오로 복제됨
     juce::dsp::ProcessSpec monoSpec = spec;
     monoSpec.numChannels = 1;
 
-    // 신호 체인 순서대로 prepare() 호출
     noiseGate.prepare (monoSpec);
     preamp.prepare (monoSpec);
     toneStack.prepare (monoSpec);
@@ -18,7 +15,6 @@ void SignalChain::prepare (const juce::dsp::ProcessSpec& spec)
 
 void SignalChain::reset()
 {
-    // 재생 중지 또는 노브 조절 시 모든 모듈의 상태 초기화
     noiseGate.reset();
     preamp.reset();
     toneStack.reset();
@@ -28,16 +24,51 @@ void SignalChain::reset()
 
 int SignalChain::getTotalLatencyInSamples() const
 {
-    // --- 전체 신호 체인 지연 시간 ---
-    // Preamp: 4배 오버샘플링 필터 지연 (~200샘플)
-    // Cabinet: 균일 분할 컨볼루션 지연 (~버퍼 크기)
-    // NoiseGate, ToneStack, PowerAmp: 지연 없음 (IIR 필터는 즉시 응답)
     return preamp.getLatencyInSamples() + cabinet.getLatencyInSamples();
+}
+
+void SignalChain::setAmpModel (AmpModelId modelId)
+{
+    currentModelId = modelId;
+    const auto& model = AmpModelLibrary::getModel (modelId);
+
+    // Update DSP modules for the selected model
+    toneStack.setType (model.toneStack);
+    preamp.setPreampType (model.preamp);
+    powerAmp.setPowerAmpType (model.powerAmp, model.sagEnabled);
+
+    // Load default IR for this model
+    // Map IR name to BinaryData
+    if (model.defaultIRName == "ir_8x10_svt_wav")
+        cabinet.loadIRFromBinaryData (BinaryData::ir_8x10_svt_wav,
+                                       BinaryData::ir_8x10_svt_wavSize);
+    else if (model.defaultIRName == "ir_4x10_jbl_wav")
+        cabinet.loadIRFromBinaryData (BinaryData::ir_4x10_jbl_wav,
+                                       BinaryData::ir_4x10_jbl_wavSize);
+    else if (model.defaultIRName == "ir_1x15_vintage_wav")
+        cabinet.loadIRFromBinaryData (BinaryData::ir_1x15_vintage_wav,
+                                       BinaryData::ir_1x15_vintage_wavSize);
+    else if (model.defaultIRName == "ir_2x12_british_wav")
+        cabinet.loadIRFromBinaryData (BinaryData::ir_2x12_british_wav,
+                                       BinaryData::ir_2x12_british_wavSize);
+    else if (model.defaultIRName == "ir_2x10_modern_wav")
+        cabinet.loadIRFromBinaryData (BinaryData::ir_2x10_modern_wav,
+                                       BinaryData::ir_2x10_modern_wavSize);
+    else
+        cabinet.loadDefaultIR();
+
+    // Reset all DSP state to prevent artifacts from previous model's filter memory
+    toneStack.reset();
+    powerAmp.reset();
+
+    // Force coefficient recalculation
+    prevBass = prevMid = prevTreble = prevPresence = -1.0f;
+    prevVpf = prevVle = prevGrunt = prevAttack = -1.0f;
+    prevMidPos = -1;
 }
 
 void SignalChain::connectParameters (juce::AudioProcessorValueTreeState& apvts)
 {
-    // --- NoiseGate 파라미터 연결 ---
     noiseGate.setParameterPointers (
         apvts.getRawParameterValue ("gate_threshold"),
         apvts.getRawParameterValue ("gate_attack"),
@@ -45,34 +76,42 @@ void SignalChain::connectParameters (juce::AudioProcessorValueTreeState& apvts)
         apvts.getRawParameterValue ("gate_release"),
         apvts.getRawParameterValue ("gate_enabled"));
 
-    // --- Preamp 파라미터 연결 ---
     preamp.setParameterPointers (
         apvts.getRawParameterValue ("input_gain"),
         apvts.getRawParameterValue ("volume"));
 
-    // --- ToneStack 파라미터 연결 ---
     toneStack.setParameterPointers (
         apvts.getRawParameterValue ("bass"),
         apvts.getRawParameterValue ("mid"),
         apvts.getRawParameterValue ("treble"),
-        nullptr);  // Phase 1: 항상 활성화 (나중에 enable 파라미터 추가 가능)
+        nullptr);
 
-    // --- PowerAmp 파라미터 연결 ---
     powerAmp.setParameterPointers (
         apvts.getRawParameterValue ("drive"),
-        apvts.getRawParameterValue ("presence"));
+        apvts.getRawParameterValue ("presence"),
+        apvts.getRawParameterValue ("sag"));
 
-    // --- Cabinet 파라미터 연결 ---
     cabinet.setParameterPointers (
         apvts.getRawParameterValue ("cab_bypass"));
 }
 
 void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTreeState& apvts)
 {
-    // --- ToneStack 계수 업데이트 (메인 스레드 전용) ---
-    // 복잡한 RC 회로 해석 + 이중 선형 변환 계산 (CPU 집약적)
-    // 파라미터 값 읽기 (락프리 atomic load)
-    // 변화 감지: 파라미터가 변하지 않았으면 재계산을 건너뛴다.
+    // --- Amp model switch ---
+    const int ampModelIndex = static_cast<int> (apvts.getRawParameterValue ("amp_model")->load());
+    if (ampModelIndex != prevAmpModel)
+    {
+        setAmpModel (static_cast<AmpModelId> (ampModelIndex));
+        prevAmpModel = ampModelIndex;
+
+        // 모델 기본 IR에 맞춰 cab_ir 파라미터도 갱신 → CabinetSelector ComboBox 동기화
+        const auto& newModel = AmpModelLibrary::getModel (static_cast<AmpModelId> (ampModelIndex));
+        const int irIndex = irNameToIndex (newModel.defaultIRName);
+        if (auto* p = apvts.getParameter ("cab_ir"))
+            p->setValueNotifyingHost (p->convertTo0to1 (static_cast<float> (irIndex)));
+    }
+
+    // --- ToneStack coefficients ---
     const float bass   = apvts.getRawParameterValue ("bass")->load();
     const float mid    = apvts.getRawParameterValue ("mid")->load();
     const float treble = apvts.getRawParameterValue ("treble")->load();
@@ -85,29 +124,72 @@ void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTre
         prevTreble = treble;
     }
 
-    // --- PowerAmp Presence 필터 계수 업데이트 (메인 스레드 전용) ---
-    // 고주파 셸빙 필터 계수 계산
+    // --- PowerAmp Presence filter ---
     const float presence = apvts.getRawParameterValue ("presence")->load();
-
     if (presence != prevPresence)
     {
         powerAmp.updatePresenceFilter (presence);
         prevPresence = presence;
     }
+
+    // --- Model-specific parameters ---
+    const auto& model = AmpModelLibrary::getModel (currentModelId);
+
+    // Italian Clean: VPF / VLE
+    if (model.toneStack == ToneStackType::MarkbassFourBand)
+    {
+        const float vpf = apvts.getRawParameterValue ("vpf")->load();
+        const float vle = apvts.getRawParameterValue ("vle")->load();
+        if (vpf != prevVpf || vle != prevVle)
+        {
+            toneStack.updateMarkbassExtras (vpf, vle);
+            prevVpf = vpf;
+            prevVle = vle;
+        }
+    }
+
+    // Modern Micro: Grunt / Attack
+    if (model.toneStack == ToneStackType::BaxandallGrunt)
+    {
+        const float grunt  = apvts.getRawParameterValue ("grunt")->load();
+        const float attack = apvts.getRawParameterValue ("attack")->load();
+        if (grunt != prevGrunt || attack != prevAttack)
+        {
+            toneStack.updateModernExtras (grunt, attack);
+            // Re-trigger coefficient computation with grunt/attack applied
+            toneStack.updateCoefficients (
+                apvts.getRawParameterValue ("bass")->load(),
+                apvts.getRawParameterValue ("mid")->load(),
+                apvts.getRawParameterValue ("treble")->load());
+            prevGrunt  = grunt;
+            prevAttack = attack;
+        }
+    }
+
+    // American Vintage: Mid Position
+    if (model.toneStack == ToneStackType::Baxandall)
+    {
+        const int midPos = static_cast<int> (apvts.getRawParameterValue ("mid_position")->load());
+        if (midPos != prevMidPos)
+        {
+            toneStack.updateMidPosition (midPos);
+            // Re-trigger coefficient computation
+            toneStack.updateCoefficients (
+                apvts.getRawParameterValue ("bass")->load(),
+                apvts.getRawParameterValue ("mid")->load(),
+                apvts.getRawParameterValue ("treble")->load());
+            prevMidPos = midPos;
+        }
+    }
 }
 
 void SignalChain::process (juce::AudioBuffer<float>& buffer)
 {
-    // --- 신호 체인 실행 순서 ---
-    // Gate → Preamp → PowerAmp → ToneStack → Cabinet
-    //
-    // ToneStack을 PowerAmp(Drive 포화) 뒤에 배치:
-    // Drive의 tanh 포화 전에 EQ를 적용하면 고역(Treble) 부스트가
-    // tanh에 의해 다시 압축되어 효과가 들리지 않음.
-    // 포화 이후 EQ를 적용하면 모든 밴드가 명확하게 동작함.
+    // CARRY: Signal chain order restored to correct sequence
+    // Gate -> Preamp -> ToneStack -> PowerAmp -> Cabinet
     noiseGate.process (buffer);
     preamp.process (buffer);
-    powerAmp.process (buffer);
     toneStack.process (buffer);
+    powerAmp.process (buffer);
     cabinet.process (buffer);
 }

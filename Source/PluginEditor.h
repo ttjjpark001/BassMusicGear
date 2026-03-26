@@ -2,70 +2,75 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
-#include "UI/Knob.h"
+#include "UI/AmpPanel.h"
+#include "UI/CabinetSelector.h"
 
 /**
- * @brief 플러그인 에디터(UI): 앰프 제어 인터페이스
+ * @brief BassMusicGear 플러그인 에디터 (UI, Phase 2)
  *
- * Phase 1 구성:
- * - Preamp: InputGain, Volume 노브
- * - Tone Stack: Bass, Mid, Treble 노브
- * - Power Amp: Drive, Presence 노브
- * - Cabinet: Bypass 토글 버튼
+ * **레이아웃**:
+ * - **AmpPanel**: 상단 1/2 영역
+ *   - 앰프 모델 선택 ComboBox (5종)
+ *   - 모델별 노브 레이아웃
+ *     - PREAMP: Input Gain, Volume
+ *     - TONE STACK: Bass, Mid, Treble
+ *     - POWER AMP: Drive, Presence, [Sag]
+ *   - 모델별 특화 컨트롤
+ *     - American Vintage: Mid Position (250Hz ~ 3kHz 선택)
+ *     - Italian Clean: VPF, VLE 노브
+ *     - Modern Micro: Grunt, Attack 노브
  *
- * UI 레이아웃: 800x500 픽셀
- * - 제목: "BassMusicGear" (상단)
- * - 섹션 라벨: "PREAMP", "TONE STACK", "POWER AMP" (색상 구분)
- * - 노브: Knob 컴포넌트로 일관된 모양 제공 (우클릭 기본값 리셋)
- * - 토글: Cabinet Bypass 버튼
- * - 상태 표시: "Phase 1 -- Core Signal Chain" (하단)
+ * - **CabinetSelector**: 하단 1/2 영역
+ *   - 내장 IR 선택 ComboBox (5종: 8x10 SVT / 4x10 JBL / 1x15 Vintage / 2x12 British / 2x10 Modern)
+ *   - Bypass 토글 (Cabinet Convolution 우회)
  *
- * 디자인: 다크 테마 (배경: #1a1a2e), 주황색 강조 (#ff8800)
+ * **UI 소재 및 색상**:
+ * - 배경: 검은색 (#222222)
+ * - 강조색: 주황색 (#ff8800) — 앰프 모델별 테마 색상
+ * - 텍스트: 밝은 회색 (#cccccc)
+ * - 노브: RotarySlider 커스텀 (드래그, 우클릭 리셋)
+ *
+ * **스레드 안전성**:
+ * - 모든 UI 업데이트는 메인 스레드(메시지 스레드)에서만 호출
+ * - PluginProcessor::apvts와 Attachment로 파라미터 동기화
+ * - 오디오 스레드는 atomic 포인터로 파라미터 값을 폴링만 함 (락 없음)
  */
 class PluginEditor final : public juce::AudioProcessorEditor
 {
 public:
     /**
-     * @brief 플러그인 에디터 생성
+     * @brief PluginEditor 생성 및 UI 초기화
      *
-     * @param processor PluginProcessor 인스턴스 (apvts 접근용)
+     * @param processor  PluginProcessor 참조 (APVTS, SignalChain 접근)
+     * @note [메인 스레드] DAW가 플러그인 로드 시 호출.
+     *       AmpPanel과 CabinetSelector를 생성 및 배치.
      */
     explicit PluginEditor (PluginProcessor& processor);
     ~PluginEditor() override;
 
     /**
-     * @brief UI 배경 및 텍스트 그리기
+     * @brief 배경 및 섹션 라벨을 그린다.
      *
-     * @param g Graphics 객체 (배경, 제목, 라벨 그림)
+     * @param g  Graphics 컨텍스트
+     * @note [메인 스레드] 리페인트 필요 시 호출.
      */
     void paint (juce::Graphics& g) override;
 
     /**
-     * @brief 자식 컴포넌트 레이아웃 설정
+     * @brief AmpPanel과 CabinetSelector의 위치/크기를 계산하여 배치한다.
      *
-     * 노브와 버튼의 크기/위치를 윈도우 크기에 맞춰 배치.
+     * - AmpPanel: 상단 ~1/2 (모든 톤 컨트롤)
+     * - CabinetSelector: 하단 ~1/2 (IR 선택 + Bypass)
+     *
+     * @note [메인 스레드] 윈도우 리사이즈 또는 초기화 시 호출.
      */
     void resized() override;
 
 private:
-    PluginProcessor& processorRef;  // apvts 접근용
+    PluginProcessor& processorRef;  // PluginProcessor 참조 (APVTS, SignalChain 접근)
 
-    // --- Preamp 섹션 노브 ---
-    Knob inputGainKnob;  // Input Gain (-20..+40 dB)
-    Knob volumeKnob;     // Volume (-60..+12 dB)
-
-    // --- Tone Stack 섹션 노브 ---
-    Knob bassKnob;       // Bass (0..1 가변저항 위치)
-    Knob midKnob;        // Mid (0..1 가변저항 위치)
-    Knob trebleKnob;     // Treble (0..1 가변저항 위치)
-
-    // --- Power Amp 섹션 노브 ---
-    Knob driveKnob;      // Drive (0..1 → 포화량)
-    Knob presenceKnob;   // Presence (0..1 → -6..+6dB 고주파 필터)
-
-    // --- Cabinet 섹션 버튼 ---
-    juce::ToggleButton cabBypassButton { "Cab Bypass" };  // IR 컨볼루션 Bypass
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> cabBypassAttachment;
+    AmpPanel        ampPanel;       // 5종 앰프 모델 선택 및 톤 컨트롤 패널
+    CabinetSelector cabinetSelector;  // 캐비닛 IR 선택 및 Bypass 패널
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginEditor)
 };

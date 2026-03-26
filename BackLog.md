@@ -4,33 +4,20 @@ BassMusicGear 구현 백로그.
 완료된 Phase들 중 아직 구현되지 않은 항목을 관리한다.
 미래 Phase의 항목은 포함하지 않는다.
 
-**마지막 갱신**: 2026-03-22
-**기준 Phase**: Phase 0 ~ Phase 1 (완료 기준)
-**총 미구현 항목**: 2건 (미구현 1건 / 부분 구현 0건 / 임시 수정 복원 필요 1건)
+**마지막 갱신**: 2026-03-25
+**기준 Phase**: Phase 0 ~ Phase 2 (완료 기준)
+**총 미구현 항목**: 2건 (미구현 0건 / 부분 구현 1건 / 확인 필요 1건)
 
 ---
 
 ## 미구현 항목
 
-### Phase 1 — 핵심 신호 체인
+### Phase 2 — 전체 앰프 모델
 
-| 심각도 | 항목 | 원래 분류 | 설명 |
-|--------|------|---------|------|
-| 미구현 | PowerAmp Sag 시뮬레이션 | P1 이월 (Phase 1 -> Phase 2 CARRY) | `PowerAmp.h` 23번째 줄에 "Phase 2 예정 기능" 주석만 존재. `PowerAmp.cpp`에 Sag 관련 파라미터·로직 없음. Phase 2에서 튜브 모델(American Vintage / Tweed Bass / British Stack)에서만 활성화하는 조건 분기 포함하여 구현 필요. |
-
----
-
-## 임시 수정 — Phase 2에서 복원 필요
-
-### [Phase1-이월] 신호 체인 순서 원위치 (ToneStack)
-
-- **현재 상태**: `Gate -> Preamp -> PowerAmp -> ToneStack -> Cabinet`
-- **원래 스펙**: `Gate -> Preamp -> ToneStack -> PowerAmp -> Cabinet`
-- **임시 수정 이유**: Phase 1의 PowerAmp Drive(`pow(40,x)` + tanh)가 과도하게 공격적이어서
-  ToneStack Treble 부스트를 tanh가 다시 압축, 노브 효과가 들리지 않는 문제
-- **Phase 2 복원 조건**: 앰프 모델별 게인 스테이징 구현 후 Drive가 모델에 맞게 재튜닝되면
-  `SignalChain.cpp`의 `process()` 순서를 원위치로 되돌린다.
-- **파일**: `Source/DSP/SignalChain.cpp` — `process()` 함수 (99~113번째 줄)
+| 심각도 | 항목 | 원래 분류 | 처리 예정 Phase | 설명 |
+|--------|------|---------|--------------|------|
+| 🟡 부분 구현 | 앰프 모델별 실제 캐비닛 IR 연결 | Phase 2 신규 | Phase 9 (릴리즈 준비) | AmpModelLibrary.cpp 주석에 American Vintage("ir_8x10_svt_wav", "임시 placeholder IR")와 Italian Clean("ir_1x15_vintage_wav", "Italian Clean 전용 IR 미확보, 1x15 Vintage로 대체")이 임시 IR 사용 중임을 명시. CabinetSelector.cpp 주석도 "8x10 SVT (placeholder)"로 표기. Phase 9에서 무료 IR 라이브러리(Torpedo WoS, Celestion Free, OpenIR 등)에서 실제 IR WAV를 취득하여 Resources/IR/에 추가하고 AmpModelLibrary.cpp의 defaultIRName 필드와 CabinetSelector.cpp의 switch 케이스를 교체해야 함. |
+| 🟢 확인 필요 | 앰프 모델별 UI 색상 테마 | P1 이월 (→ Phase 8) | Phase 8 | AmpModel.h에 themeColour 필드가 선언되어 있고 AmpModelLibrary.cpp에 5종 색상값(American Vintage 주황/Tweed 크림/British 진한주황/Modern 초록/Italian 파랑)이 등록되어 있으나, Source 전체에서 themeColour를 읽거나 LookAndFeel에 적용하는 코드가 없음. Phase 8 CARRY로 처리 예정. |
 
 ---
 
@@ -51,3 +38,5 @@ BassMusicGear 구현 백로그.
 | 항목 | 원래 Phase | 구현된 Phase | 제거 시각 |
 |------|-----------|------------|---------|
 | 커스텀 IR 파일 로드 (`Cabinet::loadIR(File)`) | Phase 1 P1 이월 (-> Phase 6) | Phase 1 | 2026-03-22 |
+| PowerAmp Sag 시뮬레이션 | Phase 1 P1 이월 (-> Phase 2 CARRY) | Phase 2 | 2026-03-25 |
+| 신호 체인 순서 복원 (ToneStack) | Phase 1 임시 수정 (-> Phase 2 복원) | Phase 2 | 2026-03-25 |

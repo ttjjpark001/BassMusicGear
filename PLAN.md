@@ -341,7 +341,7 @@ PLAN.md의 Phase 5를 구현해줘. PRD.md 섹션 4(Post-FX), 8을 참고한다.
 **마일스톤**: Bi-Amp ON 시 저역 클린/고역 앰프 분리 청취, IR Position Pre↔Post 차이 확인.
 
 ### ✅ CARRY
-- 커스텀 IR 파일 로드 `Cabinet::loadIR(File)` (Phase 1 P1)
+- ~~커스텀 IR 파일 로드 `Cabinet::loadIR(File)` (Phase 1 P1)~~ → Phase 1에서 조기 완료
 - Delay BPM Sync (Phase 5 P1 — 해당 시 처리)
 
 ### P0 구현 항목
@@ -553,8 +553,9 @@ PLAN.md의 Phase 9를 구현해줘. PRD.md 섹션 13과 CLAUDE.md AudioDeviceMan
 
 | Phase 발생 | 항목 | 이월 대상 | 완료 여부 |
 |---|---|---|---|
-| Phase 1 | PowerAmp Sag | Phase 2 | ☐ |
-| Phase 1 | 커스텀 IR 파일 로드 | Phase 6 | ☐ |
+| Phase 1 | PowerAmp Sag | Phase 2 | ✅ (Phase 2에서 완료) |
+| Phase 1 | 커스텀 IR 파일 로드 (`Cabinet::loadIR(File)`) | Phase 6 | ✅ (Phase 1에서 조기 완료) |
 | Phase 2 | 앰프 모델별 UI 색상 테마 | Phase 8 | ☐ |
+| Phase 2 | 실제 캐비닛 IR 파일 연결 (8x10 SVT / 4x10 JBL / 1x15 Vintage / 2x12 British / 2x10 Modern) | Phase 9 | ☐ |
 | Phase 4 | Octaver Oct-Up 음질 개선 | Phase 5 | ☐ |
 | Phase 5 | Delay BPM Sync | Phase 8 | ☐ |

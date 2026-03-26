@@ -117,7 +117,28 @@ last_completed_phase: 1
 
 ---
 
-### STEP 5: BackLogManager — 백로그 갱신
+### STEP 5: PLAN.md P1 이월 추적표 갱신
+
+`PLAN.md` 하단의 **P1 이월 추적표**를 읽어, Phase N에서 완료된 항목을 `✅`로 표시한다.
+
+**갱신 방법:**
+1. `PLAN.md`의 `## P1 이월 추적표` 섹션을 읽는다.
+2. `이월 대상` 열이 `Phase N`인 행을 찾는다.
+3. 해당 행의 `완료 여부` 열을 `☐` → `✅ (Phase N에서 완료)`로 수정한다.
+4. Phase N의 ✅ CARRY 섹션에 나열된 항목도 동일하게 처리한다.
+   (CARRY 항목은 이전 Phase에서 이월된 것이므로 `이월 대상`이 N보다 작을 수 있음)
+
+**주의:**
+- 실제로 구현된 항목만 ✅ 처리한다. P1으로 다시 이월된 항목은 `이월 대상`만 다음 Phase로 변경한다.
+- `PLAN.md`의 변경 내용도 이후 git add 대상에 포함된다.
+
+```
+✅ STEP 5 완료 — PLAN.md P1 이월 추적표 갱신 (완료 처리 N건)
+```
+
+---
+
+### STEP 6: BackLogManager — 백로그 갱신
 
 **BackLogManager 에이전트 호출:**
 ```
@@ -132,19 +153,19 @@ BackLogManager는 다음을 수행한다:
 - 새로 발견된 미구현 항목 추가
 - `BackLog.md` 저장
 
-**완료 확인**: BackLogManager가 보고를 반환하면 STEP 6으로 진행.
+**완료 확인**: BackLogManager가 보고를 반환하면 STEP 7으로 진행.
 `BackLog.md`의 변경 내용도 이후 git add 대상에 포함된다.
 
 ```
-✅ STEP 5 완료 — BackLog.md 갱신 (제거 N건 / 추가 M건)
+✅ STEP 6 완료 — BackLog.md 갱신 (제거 N건 / 추가 M건)
 ```
 
 ---
 
-### STEP 6: git add
+### STEP 7: git add
 
 변경된 파일을 스테이징한다.
-`BackLog.md`와 `MEMORY.md`를 포함한 모든 변경 파일이 대상이다.
+`BackLog.md`, `MEMORY.md`, `PLAN.md`를 포함한 모든 변경 파일이 대상이다.
 
 ```bash
 git add -A
@@ -164,7 +185,7 @@ git add -A
 
 ---
 
-### STEP 7: git commit
+### STEP 8: git commit
 
 STEP 3에서 구성한 커밋 메시지로 커밋한다.
 
@@ -184,7 +205,7 @@ EOF
 
 ---
 
-### STEP 8: git push
+### STEP 9: git push
 
 ```bash
 git push
@@ -200,7 +221,7 @@ push 실패 시:
 
 ---
 
-### STEP 9: 완료 보고
+### STEP 10: 완료 보고
 
 ```
 ╔══════════════════════════════════════════════════════╗

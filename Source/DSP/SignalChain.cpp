@@ -7,6 +7,8 @@ void SignalChain::prepare (const juce::dsp::ProcessSpec& spec)
     monoSpec.numChannels = 1;
 
     noiseGate.prepare (monoSpec);
+    tuner.prepare (monoSpec);
+    compressor.prepare (monoSpec);
     preamp.prepare (monoSpec);
     toneStack.prepare (monoSpec);
     powerAmp.prepare (monoSpec);
@@ -16,6 +18,8 @@ void SignalChain::prepare (const juce::dsp::ProcessSpec& spec)
 void SignalChain::reset()
 {
     noiseGate.reset();
+    tuner.reset();
+    compressor.reset();
     preamp.reset();
     toneStack.reset();
     powerAmp.reset();
@@ -93,6 +97,19 @@ void SignalChain::connectParameters (juce::AudioProcessorValueTreeState& apvts)
 
     cabinet.setParameterPointers (
         apvts.getRawParameterValue ("cab_bypass"));
+
+    tuner.setParameterPointers (
+        apvts.getRawParameterValue ("tuner_reference_a"),
+        apvts.getRawParameterValue ("tuner_mute"));
+
+    compressor.setParameterPointers (
+        apvts.getRawParameterValue ("comp_enabled"),
+        apvts.getRawParameterValue ("comp_threshold"),
+        apvts.getRawParameterValue ("comp_ratio"),
+        apvts.getRawParameterValue ("comp_attack"),
+        apvts.getRawParameterValue ("comp_release"),
+        apvts.getRawParameterValue ("comp_makeup"),
+        apvts.getRawParameterValue ("comp_dry_blend"));
 }
 
 void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTreeState& apvts)
@@ -185,9 +202,11 @@ void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTre
 
 void SignalChain::process (juce::AudioBuffer<float>& buffer)
 {
-    // CARRY: Signal chain order restored to correct sequence
-    // Gate -> Preamp -> ToneStack -> PowerAmp -> Cabinet
+    // Signal chain order: Gate -> Tuner -> Compressor -> [BiAmp] -> Preamp -> ToneStack -> PowerAmp -> Cabinet
     noiseGate.process (buffer);
+    tuner.process (buffer);
+    compressor.process (buffer);
+    // [BiAmp placeholder — Phase 6]
     preamp.process (buffer);
     toneStack.process (buffer);
     powerAmp.process (buffer);

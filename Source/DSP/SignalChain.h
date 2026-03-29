@@ -3,6 +3,8 @@
 #include <juce_dsp/juce_dsp.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "Effects/NoiseGate.h"
+#include "Tuner.h"
+#include "Effects/Compressor.h"
 #include "Preamp.h"
 #include "ToneStack.h"
 #include "PowerAmp.h"
@@ -14,7 +16,7 @@
  * @brief 완전한 베이스 신호 처리 체인 조립 및 관리
  *
  * **신호 체인 전체 순서**:
- * 입력 → [NoiseGate] → [Preamp(4xOS)] → [ToneStack(모델별)] → [PowerAmp(Drive/Presence/Sag)] → [Cabinet(IR)] → 출력
+ * 입력 → [NoiseGate] → [Tuner(YIN)] → [Compressor] → [BiAmp placeholder] → [Preamp(4xOS)] → [ToneStack(모델별)] → [PowerAmp(Drive/Presence/Sag)] → [Cabinet(IR)] → 출력
  *
  * **각 블록의 역할**:
  * 1. **NoiseGate**: 허밍 및 배경 노이즈 제거 (히스테리시스 게이트)
@@ -133,6 +135,12 @@ public:
      */
     Cabinet& getCabinet() { return cabinet; }
 
+    /** Tuner 접근자 — TunerDisplay에서 피치 정보를 읽을 때 사용 */
+    Tuner& getTuner() { return tuner; }
+
+    /** Compressor 접근자 — UI에서 게인 리덕션 값을 읽을 때 사용 */
+    Compressor& getCompressor() { return compressor; }
+
 private:
     /** IR 이름 문자열을 cab_ir 파라미터 인덱스(0~4)로 변환한다. */
     static int irNameToIndex (const juce::String& irName)
@@ -145,12 +153,15 @@ private:
         return 0; // fallback
     }
 
-    // --- 신호 체인 5개 블록 ---
-    NoiseGate noiseGate;    // 히스테리시스 게이트: 노이즈 제거
-    Preamp    preamp;       // 입력 이득 + 웨이브쉐이핑 (4x 오버샘플링)
-    ToneStack toneStack;    // 모델별 톤 컨트롤 EQ
-    PowerAmp  powerAmp;     // 포화 + Presence 필터 + Sag 엔벨로프
-    Cabinet   cabinet;      // 콘볼루션 캐비닛 IR
+    // --- 신호 체인 블록 ---
+    NoiseGate  noiseGate;    // 히스테리시스 게이트: 노이즈 제거
+    Tuner      tuner;        // YIN 피치 트래킹 (41Hz~330Hz)
+    Compressor compressor;   // VCA 컴프레서 (패러렐 드라이 블렌드)
+    // [BiAmp placeholder — Phase 6에서 구현]
+    Preamp     preamp;       // 입력 이득 + 웨이브쉐이핑 (4x 오버샘플링)
+    ToneStack  toneStack;    // 모델별 톤 컨트롤 EQ
+    PowerAmp   powerAmp;     // 포화 + Presence 필터 + Sag 엔벨로프
+    Cabinet    cabinet;      // 콘볼루션 캐비닛 IR
 
     AmpModelId currentModelId = AmpModelId::TweedBass;  // 현재 선택된 앰프 모델
 

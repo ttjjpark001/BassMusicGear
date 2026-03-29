@@ -225,6 +225,52 @@ PluginProcessor::createParameterLayout()
         juce::StringArray { "8x10 SVT", "4x10 JBL", "1x15 Vintage",
                             "2x12 British", "2x10 Modern" }, 0));
 
+    //--------------------------------------------------------------------------
+    // Tuner
+    //--------------------------------------------------------------------------
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "tuner_reference_a", 1 }, "Reference A",
+        juce::NormalisableRange<float> (430.0f, 450.0f, 0.1f), 440.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("Hz")));
+
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "tuner_mute", 1 }, "Tuner Mute", false));
+
+    //--------------------------------------------------------------------------
+    // Compressor
+    //--------------------------------------------------------------------------
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "comp_enabled", 1 }, "Compressor", false));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "comp_threshold", 1 }, "Comp Threshold",
+        juce::NormalisableRange<float> (-60.0f, 0.0f, 0.1f), -20.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "comp_ratio", 1 }, "Comp Ratio",
+        juce::NormalisableRange<float> (1.0f, 20.0f, 0.1f), 4.0f,
+        juce::AudioParameterFloatAttributes().withLabel (":1")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "comp_attack", 1 }, "Comp Attack",
+        juce::NormalisableRange<float> (0.1f, 200.0f, 0.1f), 10.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("ms")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "comp_release", 1 }, "Comp Release",
+        juce::NormalisableRange<float> (10.0f, 1000.0f, 1.0f), 100.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("ms")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "comp_makeup", 1 }, "Comp Makeup",
+        juce::NormalisableRange<float> (-12.0f, 24.0f, 0.1f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "comp_dry_blend", 1 }, "Comp Dry Blend",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
+
     return { params.begin(), params.end() };
 }
 

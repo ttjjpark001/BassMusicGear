@@ -100,6 +100,10 @@ target_sources(BassMusicGear
         Source/PluginEditor.cpp
         Source/DSP/Effects/NoiseGate.h
         Source/DSP/Effects/NoiseGate.cpp
+        Source/DSP/Effects/Compressor.h
+        Source/DSP/Effects/Compressor.cpp
+        Source/DSP/Tuner.h
+        Source/DSP/Tuner.cpp
         Source/DSP/ToneStack.h
         Source/DSP/ToneStack.cpp
         Source/DSP/Preamp.h
@@ -116,6 +120,8 @@ target_sources(BassMusicGear
         Source/UI/AmpPanel.cpp
         Source/UI/CabinetSelector.h
         Source/UI/CabinetSelector.cpp
+        Source/UI/TunerDisplay.h
+        Source/UI/TunerDisplay.cpp
         Source/Models/AmpModel.h
         Source/Models/AmpModelLibrary.h
         Source/Models/AmpModelLibrary.cpp

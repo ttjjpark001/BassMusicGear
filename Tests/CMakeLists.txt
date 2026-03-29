@@ -5,6 +5,7 @@ add_executable(BassMusicGear_Tests
     SmokeTest.cpp
     ToneStackTest.cpp
     OverdriveTest.cpp
+    CompressorTest.cpp
 )
 
 # Add DSP source files needed by tests (compiled separately from plugin target)
@@ -12,6 +13,7 @@ target_sources(BassMusicGear_Tests
     PRIVATE
         "${CMAKE_SOURCE_DIR}/Source/DSP/ToneStack.cpp"
         "${CMAKE_SOURCE_DIR}/Source/DSP/Preamp.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/DSP/Effects/Compressor.cpp"
         "${CMAKE_SOURCE_DIR}/Source/Models/AmpModelLibrary.cpp"
 )
 

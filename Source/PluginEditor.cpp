@@ -4,13 +4,15 @@
 PluginEditor::PluginEditor (PluginProcessor& p)
     : AudioProcessorEditor (&p),
       processorRef (p),
+      tunerDisplay (p.getSignalChain().getTuner(), p.apvts),
       ampPanel (p.apvts),
       cabinetSelector (p.apvts, p)
 {
+    addAndMakeVisible (tunerDisplay);
     addAndMakeVisible (ampPanel);
     addAndMakeVisible (cabinetSelector);
 
-    setSize (800, 500);
+    setSize (800, 550);
 }
 
 PluginEditor::~PluginEditor() = default;
@@ -29,7 +31,7 @@ void PluginEditor::paint (juce::Graphics& g)
     // Phase indicator
     g.setColour (juce::Colour (0xff666688));
     g.setFont (juce::FontOptions (11.0f));
-    g.drawFittedText ("Phase 2 -- All 5 Amp Models",
+    g.drawFittedText ("Phase 3 -- Tuner + Compressor",
                       0, getHeight() - 20, getWidth(), 20,
                       juce::Justification::centred, 1);
 }
@@ -39,6 +41,10 @@ void PluginEditor::resized()
     auto area = getLocalBounds().reduced (5);
     area.removeFromTop (35);  // title space
     area.removeFromBottom (22);  // phase indicator
+
+    // Tuner display at top (always visible)
+    tunerDisplay.setBounds (area.removeFromTop (42));
+    area.removeFromTop (4);
 
     // Amp panel takes most of the space
     ampPanel.setBounds (area.removeFromTop (300));

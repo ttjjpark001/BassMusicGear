@@ -336,21 +336,25 @@ PLAN.md의 Phase 5를 구현해줘. PRD.md 섹션 4(Post-FX), 8을 참고한다.
 
 ---
 
-## Phase 6 — Bi-Amp 크로스오버 + DI Blend
+## Phase 6 — Bi-Amp 크로스오버 + DI Blend + Amp Voicing
 
-**목표**: 신호 분기(BiAmpCrossover)와 혼합(DIBlend) + IR Position 전환이 정확하게 동작.
-**마일스톤**: Bi-Amp ON 시 저역 클린/고역 앰프 분리 청취, IR Position Pre↔Post 차이 확인.
+**목표**: 신호 분기(BiAmpCrossover)와 혼합(DIBlend) + IR Position 전환 + 앰프별 고정 Voicing 필터 적용.
+**마일스톤**: Bi-Amp ON 시 저역 클린/고역 앰프 분리 청취, IR Position Pre↔Post 차이 확인, 5종 앰프의 음색이 Cabinet bypass + ToneStack flat 상태에서도 청취로 구분 가능.
 
 ### ✅ CARRY
 - ~~커스텀 IR 파일 로드 `Cabinet::loadIR(File)` (Phase 1 P1)~~ → Phase 1에서 조기 완료
 - Delay BPM Sync (Phase 5 P1 — 해당 시 처리)
+- **Amp Voicing 필터 부재** (BackLog 🔴 이월) — 5종 앰프의 음색 차별화. `AmpVoicingPlan.md` 참고
 
 ### P0 구현 항목
 - `Source/DSP/BiAmpCrossover.h/.cpp` — LR4 4차 크로스오버 (2차 Butterworth LP 직렬 2회). ON: LP→cleanDI / HP→amp chain. OFF: 전대역 양쪽 분기. 60~500Hz
 - `Source/DSP/DIBlend.h/.cpp` — Blend(0~100%), Clean/Processed Level(±12dB), IR Position(Pre/Post)
   - Post-IR: `mixed` 그대로 출력 (Cabinet은 processed 경로 내 포함)
   - Pre-IR: `cabinetIR(mixed)` 출력
-- `SignalChain` 대규모 수정 — IR Position에 따라 Cabinet ↔ DIBlend 연결 순서 동적 전환. cleanDI 버퍼 별도 할당 (`prepareToPlay`에서)
+- `Source/DSP/AmpVoicing.h/.cpp` — 앰프별 고정 Voicing 필터 (2~3개 바이쿼드). `setModel(AmpModelType)` 호출 시 해당 앰프의 필터 계수 로드. `AmpVoicingPlan.md` 섹션 3 참고
+- `Source/Models/AmpModel.h` 수정 — `struct VoicingBand { float freq, gainDb, q; FilterType type; }`, `std::array<VoicingBand, 3> voicingBands` 추가
+- `Source/Models/AmpModelLibrary.cpp` 수정 — 5종 모델에 Voicing 값 등록 (`AmpVoicingPlan.md` 섹션 3-1~3-5)
+- `SignalChain` 대규모 수정 — ① IR Position에 따라 Cabinet ↔ DIBlend 연결 순서 동적 전환. cleanDI 버퍼 별도 할당 (`prepareToPlay`에서). ② `AmpVoicing`을 Preamp와 ToneStack 사이에 삽입. 앰프 모델 전환 시 `ampVoicing.setModel(model)` 호출
 - `Cabinet` 수정 — `loadIR(const juce::File&)` 실제 구현 (✅ CARRY)
 - `Source/UI/BiAmpPanel.h/.cpp` — ON/OFF 토글, Crossover Freq 노브
 - `Source/UI/DIBlendPanel.h/.cpp` — Blend 노브, Clean/Processed Level 노브, IR Position 토글
@@ -364,30 +368,41 @@ PLAN.md의 Phase 5를 구현해줘. PRD.md 섹션 4(Post-FX), 8을 참고한다.
   - Blend=0.0: 출력 = cleanDI × cleanLevel (오차 1e-6 이하)
   - Blend=1.0: 출력 = processed × processedLevel
   - IR Position 전환: 동일 입력에서 서로 다른 출력 확인
+- `Tests/AmpVoicingTest.cpp` (신규)
+  - Cabinet bypass + ToneStack flat 상태에서 5종 앰프의 주파수 응답이 서로 다름 확인
+  - American Vintage: 80Hz +3dB(±1dB), 1.5kHz 감쇠 확인
+  - British Stack: 500Hz 부스트, 60Hz 이하 HP 감쇠 확인
+  - Modern Micro: 3kHz +4dB(±1dB) 확인
 
 ### 스모크 테스트
 - Bi-Amp ON + Crossover 200Hz → 저음 클린/고음 앰프처리 확인
 - IR Position Pre↔Post 전환 시 서로 다른 공간감 확인
 - 커스텀 WAV IR 로드 → 즉시 반영
+- Cabinet bypass + ToneStack flat 상태에서 5종 앰프 순차 전환 → 음색 차이 청취 확인 (`AmpVoicingPlan.md` 섹션 5-3 기준)
 
 ### 실행 프롬프트
 ```
-PLAN.md의 Phase 6을 구현해줘. PRD.md 섹션 6, 10과 CLAUDE.md SignalChain 설명을 참고한다.
+PLAN.md의 Phase 6을 구현해줘. PRD.md 섹션 6, 10과 CLAUDE.md SignalChain 설명, AmpVoicingPlan.md를 참고한다.
 
 ✅ CARRY 항목 먼저 처리:
 - Cabinet::loadIR(const juce::File&) 실제 구현 (지금까지 stub이었다면)
 - Delay BPM Sync (Phase 5 이월 시)
+- Amp Voicing (BackLog 이월) — AmpVoicingPlan.md의 설계 그대로 구현
 
 그 다음:
+- AmpVoicing.h/.cpp (앰프별 고정 바이쿼드 필터 체인, setModel()으로 계수 교체)
+- AmpModel.h 수정 (VoicingBand 구조체 + voicingBands 배열)
+- AmpModelLibrary.cpp 수정 (5종 Voicing 값 등록)
+- SignalChain 수정 — AmpVoicing을 Preamp~ToneStack 사이 삽입 + 앰프 전환 시 setModel() 호출
 - BiAmpCrossover (LR4 크로스오버, ON/OFF, 60~500Hz)
 - DIBlend (Blend/Clean Level/Processed Level/IR Position Pre/Post)
 - SignalChain 대규모 수정 (IR Position에 따른 동적 라우팅. cleanDI 버퍼는 prepareToPlay에서 할당)
 - BiAmpPanel UI, DIBlendPanel UI
 
-주의: processBlock 내에서 버퍼 new 절대 금지. /DspAudit으로 BiAmpCrossover, DIBlend, SignalChain 점검.
+주의: processBlock 내에서 버퍼 new 절대 금지. /DspAudit으로 AmpVoicing, BiAmpCrossover, DIBlend, SignalChain 점검.
 
-완료 기준: BiAmpCrossoverTest + DIBlendTest 통과, Standalone에서 분기/혼합 경로 동작 확인.
-완료 후 git add/commit/push. 메시지: "feat(phase6): bi-amp LR4 crossover + DI blend with IR position switching"
+완료 기준: BiAmpCrossoverTest + DIBlendTest + AmpVoicingTest 통과, Standalone에서 분기/혼합 경로 동작 + 5종 앰프 음색 차이 청취 확인.
+완료 후 git add/commit/push. 메시지: "feat(phase6): bi-amp LR4 crossover + DI blend + amp voicing filters"
 ```
 
 ---

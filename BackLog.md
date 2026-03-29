@@ -8,6 +8,8 @@ BassMusicGear 구현 백로그.
 **기준 Phase**: Phase 0 ~ Phase 3 (완료 기준)
 **총 미구현 항목**: 5건 (미구현 1건 / 부분 구현 2건 / 확인 필요 2건)
 
+> 📌 **Amp Voicing 처리 Phase 결정됨**: Phase 6에서 구현. PLAN.md Phase 6 ✅ CARRY 항목으로 등록 완료.
+
 ---
 
 ## 미구현 항목
@@ -16,7 +18,7 @@ BassMusicGear 구현 백로그.
 
 | 심각도 | 항목 | 원래 분류 | 처리 예정 Phase | 설명 |
 |--------|------|---------|--------------|------|
-| 🔴 미구현 | Amp Voicing 필터 부재 | Phase 2 설계 누락 | **미결정 — Phase 6 또는 Phase 9 중 선택 필요** (`AmpVoicingPlan.md` 참고) | 현재 5종 앰프의 음색 차이가 거의 없음. 원인: ①Cabinet IR이 모든 앰프에 동일한 placeholder 사용 ②PowerAmp가 모든 앰프에 동일한 모듈 사용 ③앰프 고유의 고정 Voicing 필터가 없음 ④Tube12AX7 Preamp가 3종 앰프(American Vintage/Tweed Bass/British Stack)에서 동일하게 사용됨. 근본 해결은 각 앰프에 고정 Voicing 필터(AmpVoicing DSP 모듈)를 Preamp~ToneStack 사이에 추가하는 것. 세부 계획은 `AmpVoicingPlan.md` 참고. **적용 Phase는 PLAN.md 검토 후 결정 필요.** |
+| 🔴 미구현 | Amp Voicing 필터 부재 | Phase 2 설계 누락 | **Phase 6** (`AmpVoicingPlan.md` 참고, PLAN.md Phase 6 ✅ CARRY 등록 완료) | 현재 5종 앰프의 음색 차이가 거의 없음. 원인: ①Cabinet IR이 모든 앰프에 동일한 placeholder 사용 ②PowerAmp가 모든 앰프에 동일한 모듈 사용 ③앰프 고유의 고정 Voicing 필터가 없음 ④Tube12AX7 Preamp가 3종 앰프(American Vintage/Tweed Bass/British Stack)에서 동일하게 사용됨. 근본 해결은 각 앰프에 고정 Voicing 필터(AmpVoicing DSP 모듈)를 Preamp~ToneStack 사이에 추가하는 것. 세부 계획은 `AmpVoicingPlan.md` 참고. |
 | 🟡 부분 구현 | PowerAmp 앰프별 차별화 미적용 | Phase 2 P1 이월 | Amp Voicing 구현 이후 2차 작업 | 현재 PowerAmp는 모든 앰프에 동일한 모듈. 실제로는 6550(Ampeg)/6L6(Fender)/EL34(Orange)/Solid-State(Darkglass)/ClassD(Markbass)로 포화 특성이 다름. Amp Voicing 구현 완료 후 후속 작업으로 진행. |
 
 ---

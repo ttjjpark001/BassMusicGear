@@ -255,3 +255,58 @@ PLAN.md Phase 6 작업량 분석 결과 Phase 6 구현으로 결정.
 | 모던 메탈 / 슬랩 | Semi-parametric 또는 BaxandallGrunt |
 | 펑크 / R&B | Aguilar OBP-3 또는 GK 4밴드 |
 | 하이파이 / 투명한 클린 | GK 4밴드 독립 또는 Markbass 4-band |
+
+---
+
+## 10. 참고 — Post-MVP 앰프 모델 선정 분석
+
+PRD.md에 기재된 Post-MVP 4종 앰프를 프리앰프 타입 및 톤스택 타입 다양성 기준으로 평가.
+
+### 회로 분류표
+
+| 앰프 | 프리앰프 타입 | 톤스택 타입 | 프리앰프 신규 여부 | 톤스택 신규 여부 |
+|------|------------|-----------|----------------|--------------|
+| **Ampeg B-15** | Tube (12AX7) | Passive 단일 Tone 컨트롤 | 🔴 중복 (MVP에 이미 3종) | 🟡 신규이나 매우 단순 |
+| **GK 800RB** | MOSFET | GK 4밴드 독립 능동 EQ | 🟢 신규 | 🟢 신규 |
+| **Mesa Subway D-800** | Class D | 세미 파라메트릭 EQ | 🔴 중복 (Italian Clean과 동일) | 🟢 신규 |
+| **Aguilar Tone Hammer** | Op-Amp (메인 경로) + JFET AGS 드라이브 스테이지 | Aguilar OBP-3 (스위프 미드) | 🟢 신규 | 🟢 신규 |
+
+> **Aguilar Tone Hammer 분류 주의**: PRD.md에 "JFET + AGS 회로"로 기재되어 있으나, 이는 AGS(Aguilar Gain Stage) 드라이브 스테이지에 초점을 맞춘 표현임. 메인 프리앰프 경로는 Op-Amp 기반이므로 프리앰프 타입 분류 기준으로는 **Op-Amp**이 정확하다.
+
+### 모델별 평가
+
+**GK 800RB — 가장 잘 선정된 모델**
+프리앰프(MOSFET)와 톤스택(GK 4밴드) 모두 MVP에 없는 신규 타입. 회로 다양성 측면에서 가장 기여도 높음.
+
+**Aguilar Tone Hammer — 잘 선정됨**
+톤스택(OBP-3 스위프 미드)은 신규. 프리앰프도 Op-Amp으로 신규 타입. AGS 드라이브 스테이지가 JFET 특성을 추가하여 Modern Micro(Darkglass B3K)와 다른 독자적 드라이브 성격을 가짐. GK 800RB와 함께 MVP에 없는 프리앰프 타입(MOSFET, Op-Amp)을 모두 커버.
+
+**Mesa Subway D-800 — 아쉬운 선택**
+세미 파라메트릭 톤스택은 신규라 가치 있음. 단 프리앰프가 Class D로 Italian Clean(Markbass)과 동일 카테고리. 두 앰프 모두 클린/하이파이 성격이라 사용자가 차이를 느끼기 어려울 수 있음.
+
+**Ampeg B-15 — 가장 약한 선택**
+프리앰프(Tube 12AX7)가 MVP 3종과 중복. Passive 단일 Tone 컨트롤은 신규이나 고역 컷 하나뿐으로 너무 단순. 차별점이 Voicing/IR에서만 오므로 회로 구조 다양성 기여가 적음.
+
+### MVP + Post-MVP 전체 프리앰프 타입 커버리지
+
+| 프리앰프 타입 | MVP 커버 | Post-MVP 커버 | 담당 모델 |
+|------------|---------|-------------|---------|
+| Tube (12AX7) | ✅ | (중복) | American Vintage / Tweed Bass / British Stack / B-15 |
+| JFET | ✅ | (중복) | Modern Micro |
+| Class D | ✅ | (중복) | Italian Clean / Mesa D-800 |
+| MOSFET | ❌ | ✅ | GK 800RB |
+| Op-Amp | ❌ | ✅ | Aguilar Tone Hammer |
+| BJT | ❌ | ❌ | 미커버 |
+
+BJT는 대중적이나 현재 JFET/Tube로 어느 정도 커버 가능하여 우선순위 낮음.
+
+### 추가 검토 후보 (현재 Post-MVP 명단에 없는 모델)
+
+현재 Post-MVP 4종 중 Mesa D-800(Class D 중복)이나 B-15(Tube 중복) 자리에 아래 모델을 고려할 수 있음.
+
+| 앰프 | 프리앰프 | 톤스택 | 추천 이유 |
+|-----|---------|------|---------|
+| **Eden WT-800** | Op-Amp | 세미 파라메트릭 4밴드 | Op-Amp 신규 + 톤스택 신규. Mesa D-800 대체 후보. 재즈/스튜디오 장르 커버 |
+| **Hartke LH1000** | MOSFET | GK형 4밴드 | MOSFET 신규 (GK 800RB와 같은 타입이나 캐릭터 다름). GK와 중복 가능성 있어 낮은 우선순위 |
+
+> 단, Eden과 Hartke 추가는 선택적. 현재 Post-MVP 4종(GK + Aguilar)이 MOSFET과 Op-Amp을 이미 커버하므로, 실제 추가 필요성은 장르/사용자 수요 기준으로 판단할 것.

@@ -310,7 +310,41 @@ Phase N 스모크 테스트:
 
 ---
 
-### STEP 7: 완료 보고
+### STEP 7: git add / commit / push
+
+모든 구현·수정·주석·테스트 파일을 커밋하고 원격 저장소에 푸시한다.
+
+```bash
+git status
+```
+
+스테이징 전 확인 사항:
+- `.env`, 대용량 바이너리(`.exe`, `.dll`), `build/` 디렉터리가 포함되지 않도록 확인
+- 빌드 결과물이 포함된 경우 `build/` 제외 후 add
+
+```bash
+git add -A
+git commit -m "Phase N 구현: [Phase 이름] — [P0 핵심 항목 한 줄 요약]
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+git push
+```
+
+push 실패 시:
+
+| 원인 | 처리 |
+|------|------|
+| upstream 미설정 | `git push -u origin main` |
+| 원격 브랜치 충돌 | 사용자에게 상황 보고 후 중단 (force push 금지) |
+| 네트워크 오류 | 재시도 1회, 실패 시 사용자에게 보고 |
+
+```
+✅ STEP 7 완료 — 커밋: "Phase N 구현: [요약]" / push ✅
+```
+
+---
+
+### STEP 8: 완료 보고
 
 **메모리는 갱신하지 않는다.** Phase 완료는 사용자가 직접 앱을 실행해 최종 확인한 뒤 `/Complete N` 명령으로 처리한다.
 
@@ -329,6 +363,7 @@ Phase N: [Phase 이름]
   STEP 4 CodeBuilder   ✅  Debug + Release 빌드 성공 (빌드 L회)
   STEP 5 CodeCommenter ✅  주석 추가 완료
   STEP 6 CodeTester    ✅  단위 테스트 N건 통과 / 스모크 테스트 완료
+  STEP 7 Git           ✅  커밋 push 완료
 
 스모크 테스트 결과:
   [자동 확인 항목 결과 목록]

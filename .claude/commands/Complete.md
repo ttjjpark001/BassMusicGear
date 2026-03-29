@@ -70,12 +70,123 @@ $ARGUMENTS
 
 ---
 
-### STEP 3: 스모크 테스트 수동 확인 항목 점검
+### STEP 3: 미커밋 코드 변경 점검 및 정리 (CODE FIX LOOP)
+
+`/Phase N` 완료 이후 추가로 수정된 코드가 있으면 리뷰 → 빌드 → 주석 → 테스트를 모두 통과한 뒤 커밋한다.
+
+#### 3-A. 미커밋 변경 확인
+
+```bash
+git status
+git diff --stat
+```
+
+변경된 파일 중 **소스 코드 파일** (`.cpp`, `.h`, `.cmake` 등) 이 있는지 확인한다.
+- 소스 코드 변경 없음 → 이 단계를 건너뛰고 STEP 4로 진행
+- 소스 코드 변경 있음 → 3-B로 진행
+
+변경 파일 목록을 `CHANGED_FILES`로 기록한다.
+
+---
+
+#### 3-B. 코드 리뷰 (REVIEW LOOP)
+
+**CodeReviewer 에이전트 호출:**
+```
+"다음 파일들에 미커밋 변경사항이 있어. 종합 검토해줘:
+ [CHANGED_FILES 목록]
+
+ 검토 순서:
+ 1. CLAUDE.md 규칙 준수 여부 (RT 안전성, 오버샘플링, APVTS 패턴 등)
+    위반 발견 시 CRITICAL로 분류하고 즉시 수정한다.
+ 2. 주석 정확성 — 코드 동작과 주석이 일치하는지 확인, 불일치 시 수정
+ 3. 버그 탐지 및 수정
+ 4. DSP 파일은 DspReviewer와 협업해서 RT 안전성 확인
+
+ 수정이 발생하면 수정된 부분을 재검토해 CRITICAL이 없는 상태로 만들어줘."
+```
+
+CRITICAL 0건이 될 때까지 CodeReviewer 내부에서 반복한다.
+
+---
+
+#### 3-C. 빌드 (BUILD LOOP)
+
+**CodeBuilder 에이전트 호출:**
+```
+"변경된 코드를 Debug → Release 순서로 빌드해줘.
+
+빌드 에러 발생 시:
+ 1. 에러 원인을 파악하고 코드를 수정한다.
+ 2. 수정된 코드를 CodeReviewer에게 전달해 리뷰를 받는다.
+ 3. 리뷰 통과 후 해당 구성부터 빌드를 재시도한다.
+
+두 구성(Debug + Release) 모두 클린하게 빌드되는 상태로 만들어줘."
+```
+
+빌드 에러로 코드가 수정되면 3-B(CodeReviewer)부터 다시 진행한다.
+
+---
+
+#### 3-D. 주석 갱신
+
+**CodeCommenter 에이전트 호출:**
+```
+"리뷰·빌드를 거쳐 최종 확정된 다음 파일들의 한글 주석을 갱신해줘:
+ [CHANGED_FILES + 빌드 수정 파일 합산]
+
+ 변경된 코드에 맞게 기존 주석을 수정하고, 주석이 없는 새 로직에는 추가해줘.
+ 자명한 코드에는 주석을 생략해줘."
+```
+
+---
+
+#### 3-E. 테스트
+
+**CodeTester 에이전트 호출:**
+```
+"변경된 코드와 관련된 단위 테스트를 실행해줘.
+ 기존 테스트가 모두 통과하는지 확인하고, 새로 추가된 기능이 있다면 테스트를 보완해줘.
+
+ 테스트 실패 원인 분류:
+  ① 테스트 코드 문제 → 테스트만 수정 후 재실행
+  ② 앱 코드 문제 → 앱 코드 수정 → CodeReviewer → Release 빌드 → CodeCommenter(영향 파일) → 재실행
+
+ 모든 테스트가 통과하면 결과를 보고해줘."
+```
+
+3회 루프 후에도 실패 항목이 남으면 → 사용자에게 보고하고 중단.
+
+---
+
+#### 3-F. 코드 변경분 커밋
+
+Review ✅ Build ✅ Comment ✅ Test ✅ 확인 후 코드 변경분을 커밋한다.
+
+```bash
+git status
+git add -A
+git commit -m "Phase N 코드 수정: [수정 내용 한 줄 요약]
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+git push
+```
+
+빌드 결과물(`build/`, `.exe`, `.dll`)이 스테이징에 포함되지 않도록 확인한다.
+
+```
+✅ STEP 3 완료 — 코드 변경 없음 [스킵] 또는
+✅ STEP 3 완료 — Review ✅ Build ✅ Comment ✅ Test ✅ / 커밋 push 완료
+```
+
+---
+
+### STEP 4: 스모크 테스트 수동 확인 항목 점검
 
 이 단계는 사용자와 인터랙티브하게 진행한다.
-**STEP 3이 완전히 끝난 후에 STEP 4로 넘어간다.**
+**STEP 4가 완전히 끝난 후에 STEP 5로 넘어간다.**
 
-#### 3-A. 대상 항목 수집
+#### 4-A. 대상 항목 수집
 
 다음 두 소스에서 수동 확인 대상 항목을 수집한다.
 
@@ -100,7 +211,7 @@ $ARGUMENTS
 
 ---
 
-#### 3-B. 수집 결과 보고
+#### 4-B. 수집 결과 보고
 
 수집 결과를 사용자에게 다음 형식으로 보여준다:
 
@@ -119,11 +230,11 @@ $ARGUMENTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-**확인 대상 항목이 0건이면** 이 단계를 완료로 처리하고 STEP 4로 진행한다.
+**확인 대상 항목이 0건이면** 이 단계를 완료로 처리하고 STEP 5로 진행한다.
 
 ---
 
-#### 3-C. 항목별 사용자 확인
+#### 4-C. 항목별 사용자 확인
 
 확인 대상 항목을 하나씩 사용자에게 제시한다.
 (이전 Phase 이월 항목의 경우 출처 파일명도 함께 표시)
@@ -184,12 +295,12 @@ $ARGUMENTS
 
 ---
 
-#### 3-D. 점검 완료 보고
+#### 4-D. 점검 완료 보고
 
 모든 항목 처리 후 결과를 요약한다:
 
 ```
-✅ STEP 3 완료 — 스모크 테스트 점검
+✅ STEP 4 완료 — 스모크 테스트 점검
    확인 완료: A건 ([x] 처리됨)
    이월 처리: B건 (PLAN.md 갱신 포함)
    건너뜀:    C건
@@ -198,7 +309,7 @@ $ARGUMENTS
 
 ---
 
-### STEP 4: PLAN.md에서 Phase 요약 추출
+### STEP 5: PLAN.md에서 Phase 요약 추출
 
 `PLAN.md`를 읽어 Phase N의 다음 정보를 추출한다:
 - **Phase 이름** (예: `핵심 신호 체인`)
@@ -227,7 +338,7 @@ Phase 9 완료: 오디오 설정 + 릴리즈 — SettingsPage + 전체 테스트
 
 ---
 
-### STEP 5: 메모리 갱신
+### STEP 6: 메모리 갱신
 
 메모리 파일(`MEMORY.md`)을 다음과 같이 수정한다:
 
@@ -245,7 +356,7 @@ last_completed_phase: 1
 
 ---
 
-### STEP 6: PLAN.md P1 이월 추적표 갱신
+### STEP 7: PLAN.md P1 이월 추적표 갱신
 
 `PLAN.md` 하단의 **P1 이월 추적표**를 읽어, Phase N에서 완료된 항목을 `✅`로 표시한다.
 
@@ -261,12 +372,12 @@ last_completed_phase: 1
 - `PLAN.md`의 변경 내용도 이후 git add 대상에 포함된다.
 
 ```
-✅ STEP 6 완료 — PLAN.md P1 이월 추적표 갱신 (완료 처리 N건)
+✅ STEP 7 완료 — PLAN.md P1 이월 추적표 갱신 (완료 처리 N건)
 ```
 
 ---
 
-### STEP 7: BackLogManager — 백로그 갱신
+### STEP 8: BackLogManager — 백로그 갱신
 
 **BackLogManager 에이전트 호출:**
 ```
@@ -281,41 +392,39 @@ BackLogManager는 다음을 수행한다:
 - 새로 발견된 미구현 항목 추가
 - `BackLog.md` 저장
 
-**완료 확인**: BackLogManager가 보고를 반환하면 STEP 8로 진행.
+**완료 확인**: BackLogManager가 보고를 반환하면 STEP 9로 진행.
 `BackLog.md`의 변경 내용도 이후 git add 대상에 포함된다.
 
 ```
-✅ STEP 7 완료 — BackLog.md 갱신 (제거 N건 / 추가 M건)
+✅ STEP 8 완료 — BackLog.md 갱신 (제거 N건 / 추가 M건)
 ```
 
 ---
 
-### STEP 8: git add
+### STEP 9: git add
 
 변경된 파일을 스테이징한다.
 `BackLog.md`, `MEMORY.md`, `PLAN.md`, `Tests/SmokeTest_Phase*.md`를 포함한 모든 변경 파일이 대상이다.
 
 ```bash
+git status
 git add -A
 ```
 
-스테이징 전 `git status`로 변경 파일 목록을 확인하고,
 추가되는 파일 중 `.env`, 대용량 바이너리(`.exe`, `.dll` 등 빌드 결과물),
 `build/` 디렉터리가 포함되지 않도록 확인한다.
 
 빌드 결과물이 포함된 경우:
 ```bash
-# build/ 디렉터리는 .gitignore로 제외되어 있어야 함
-# 만약 포함됐다면 제외 후 add
 git reset HEAD build/
 git add -A
 ```
 
 ---
 
-### STEP 9: git commit
+### STEP 10: git commit
 
-STEP 4에서 구성한 커밋 메시지로 커밋한다.
+STEP 5에서 구성한 커밋 메시지로 커밋한다.
 
 ```bash
 git commit -m "$(cat <<'EOF'
@@ -333,7 +442,7 @@ EOF
 
 ---
 
-### STEP 10: git push
+### STEP 11: git push
 
 ```bash
 git push
@@ -349,7 +458,7 @@ push 실패 시:
 
 ---
 
-### STEP 11: 완료 보고
+### STEP 12: 완료 보고
 
 ```
 ╔══════════════════════════════════════════════════════╗
@@ -358,6 +467,10 @@ push 실패 시:
 
 Phase N: [Phase 이름]
 마일스톤: [마일스톤]
+
+코드 변경 정리 (STEP 3):
+  [변경 없음 — 스킵] 또는
+  [Review ✅ Build ✅ Comment ✅ Test ✅ — 수정 파일 N개 커밋]
 
 스모크 테스트 점검:
   확인 완료: A건 ([x] 처리됨)

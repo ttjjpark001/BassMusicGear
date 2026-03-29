@@ -60,9 +60,10 @@ BassMusicGear/
     PluginProcessor.h/.cpp    # AudioProcessor — processBlock() 진입점, APVTS 정의
     PluginEditor.h/.cpp       # AudioProcessorEditor — UI 루트, 메시지 스레드
     DSP/
-      SignalChain.h/.cpp      # 전체 신호 체인 조립 및 순서 관리. IR Position(Pre/Post) 파라미터에 따라 Cabinet ↔ DIBlend 연결 순서를 동적으로 변경
+      SignalChain.h/.cpp      # 전체 신호 체인 조립 및 순서 관리. IR Position(Pre/Post) 파라미터에 따라 Cabinet ↔ DIBlend 연결 순서를 동적으로 변경. AmpVoicing을 Preamp와 ToneStack 사이에 배치하며 앰프 모델 전환 시 setModel() 호출
       ToneStack.h/.cpp        # 앰프별 톤스택 (TMB/James/Baxandall) IIR 계수 계산
       Preamp.h/.cpp           # 프리앰프 게인 스테이징 + 웨이브쉐이핑 (Oversampling 포함)
+      AmpVoicing.h/.cpp       # 앰프별 고정 Voicing 필터 (2~3개 바이쿼드). setModel(AmpModelType)으로 해당 앰프의 계수 로드. 사용자 조작 불가, 앰프 모델 선택 시 자동 적용. Preamp 출력 직후 ~ ToneStack 앞에 위치
       Cabinet.h/.cpp          # juce::dsp::Convolution 래퍼, IR 로드/교체
       PowerAmp.h/.cpp         # 파워앰프 새추레이션 / Sag 시뮬레이션 (Post-FX 뒤, Cabinet 앞)
       Tuner.h/.cpp            # YIN 피치 트래킹, 크로매틱 표시용 데이터 생성 (DSP only, UI는 별도)
@@ -79,7 +80,7 @@ BassMusicGear/
         Reverb.h/.cpp         # 알고리즘 리버브
         NoiseGate.h/.cpp      # 히스테리시스 게이트
     Models/
-      AmpModel.h              # 앰프 모델 구성 데이터 (톤스택 타입, 기본 IR, UI 색상)
+      AmpModel.h              # 앰프 모델 구성 데이터 (톤스택 타입, 기본 IR, UI 색상, voicingBands 배열)
       AmpModelLibrary.h/.cpp  # 전체 앰프 모델 등록/조회
     UI/
       Knob.h/.cpp             # 커스텀 RotarySlider 래퍼 (드래그 + 우클릭 리셋)
@@ -106,6 +107,7 @@ BassMusicGear/
     CompressorTest.cpp        # 컴프레서 타임 컨스턴트 및 게인 리덕션 검증
     BiAmpCrossoverTest.cpp    # LR4 크로스오버 주파수 응답 및 LP+HP 합산 평탄도 검증
     DIBlendTest.cpp           # Blend 경계값(0%/50%/100%) 및 Clean/Processed 레벨 트림 정확도 검증
+    AmpVoicingTest.cpp        # 5종 앰프 Voicing 필터 주파수 응답 검증. Cabinet bypass + ToneStack flat 상태에서 앰프 간 응답이 서로 다름을 확인
     PresetTest.cpp            # ValueTree 직렬화 테스트
 ```
 
@@ -203,6 +205,17 @@ oversampling.processSamplesDown(outputBlock);
   - **VLE**: `juce::dsp::StateVariableTPTFilter` 로우패스 타입, 컷오프 주파수를 노브 값에 따라 20kHz(0) → 4kHz(max)로 매핑. 6dB/oct 기울기.
   - VPF/VLE는 서로 독립적으로 동작하며 4-band EQ 뒤에 직렬 배치.
 - 모든 계수 재계산은 메인 스레드에서 수행 후 `std::atomic` 또는 FIFO로 오디오 스레드에 전달.
+
+### Amp Voicing 구현 규칙
+
+`AmpVoicing`은 각 앰프의 회로 고유 주파수 특성을 재현하는 고정 필터 체인이다. 사용자가 조작하는 톤스택과 달리, 앰프 모델 선택 시 자동으로 적용된다.
+
+- **위치**: Preamp 출력 직후, ToneStack 앞. `SignalChain`에서 `preamp.process()` → `ampVoicing.process()` → `toneStack.process()` 순서.
+- **모델 전환**: 앰프 모델이 바뀔 때 `ampVoicing.setModel(AmpModelType)` 호출. 이 메서드 내에서 `AmpModelLibrary`에서 해당 모델의 `voicingBands`를 읽어 바이쿼드 계수를 재계산한다.
+- **계수 재계산 위치**: `setModel()`은 메인 스레드(UI 스레드)에서 호출. 재계산된 계수는 `std::atomic` 또는 FIFO를 통해 오디오 스레드에 전달.
+- **필터 수**: 앰프별 2~3개 바이쿼드 (`juce::dsp::IIR::Filter` 또는 `juce::dsp::ProcessorChain`). 세부 값은 `AmpVoicingPlan.md` 섹션 3 참조.
+- **Italian Clean 예외**: Voicing이 의도적으로 플랫(또는 최소). VPF/VLE가 음색의 주요 차별점이므로 Voicing은 고역 약간의 클래리티(+1.5dB @ 6kHz)만 적용.
+- **RT 안전**: `processBlock()` 내에서 `setModel()` 직접 호출 금지. 모델 전환은 항상 메인 스레드에서.
 
 ### 오버드라이브 블렌드 규칙
 

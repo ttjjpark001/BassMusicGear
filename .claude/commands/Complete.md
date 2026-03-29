@@ -141,7 +141,30 @@ CRITICAL 0건이 될 때까지 CodeReviewer 내부에서 반복한다.
 
 ---
 
-#### 3-E. 테스트
+#### 3-E. 주석 리뷰
+
+**CodeReviewer 에이전트 호출 (주석 검토):**
+```
+"3-D에서 주석이 추가·갱신된 다음 파일들의 주석을 검토해줘:
+ [CHANGED_FILES + 빌드 수정 파일 합산]
+
+ 검토 항목:
+ 1. 주석이 실제 코드 동작과 일치하는지 확인 (코드는 A인데 주석은 B라고 설명하는 경우 수정)
+ 2. 앰프 모델명, 회로 토폴로지, 컴포넌트 값 등 명칭이 CLAUDE.md/PRD.md 기준과 일치하는지 확인
+ 3. 오탈자, 문법 오류, 부정확한 수식 설명 수정
+ 4. 자명한 코드에 불필요하게 달린 주석 제거
+
+ 주석 내용만 수정한다. 로직 코드는 이 단계에서 변경하지 않는다.
+ CRITICAL(주석-코드 불일치) 항목이 없는 상태로 만들어줘."
+```
+
+주석 리뷰에서 **로직 코드 버그**가 발견된 경우:
+- 로직 수정 없이 주석만 교정하고 3-F로 진행한다.
+- 버그 내용은 3-F 보고에 포함해 사용자에게 알린다 (로직 수정은 별도 처리).
+
+---
+
+#### 3-F. 테스트
 
 **CodeTester 에이전트 호출:**
 ```
@@ -150,7 +173,7 @@ CRITICAL 0건이 될 때까지 CodeReviewer 내부에서 반복한다.
 
  테스트 실패 원인 분류:
   ① 테스트 코드 문제 → 테스트만 수정 후 재실행
-  ② 앱 코드 문제 → 앱 코드 수정 → CodeReviewer → Release 빌드 → CodeCommenter(영향 파일) → 재실행
+  ② 앱 코드 문제 → 앱 코드 수정 → CodeReviewer → Release 빌드 → CodeCommenter(영향 파일) → CodeReviewer 주석 리뷰(영향 파일) → 재실행
 
  모든 테스트가 통과하면 결과를 보고해줘."
 ```
@@ -159,9 +182,9 @@ CRITICAL 0건이 될 때까지 CodeReviewer 내부에서 반복한다.
 
 ---
 
-#### 3-F. 코드 변경분 커밋
+#### 3-G. 코드 변경분 커밋
 
-Review ✅ Build ✅ Comment ✅ Test ✅ 확인 후 코드 변경분을 커밋한다.
+Review ✅ Build ✅ Comment ✅ CommentReview ✅ Test ✅ 확인 후 코드 변경분을 커밋한다.
 
 ```bash
 git status
@@ -176,7 +199,7 @@ git push
 
 ```
 ✅ STEP 3 완료 — 코드 변경 없음 [스킵] 또는
-✅ STEP 3 완료 — Review ✅ Build ✅ Comment ✅ Test ✅ / 커밋 push 완료
+✅ STEP 3 완료 — Review ✅ Build ✅ Comment ✅ CommentReview ✅ Test ✅ / 커밋 push 완료
 ```
 
 ---
@@ -470,7 +493,7 @@ Phase N: [Phase 이름]
 
 코드 변경 정리 (STEP 3):
   [변경 없음 — 스킵] 또는
-  [Review ✅ Build ✅ Comment ✅ Test ✅ — 수정 파일 N개 커밋]
+  [Review ✅ Build ✅ Comment ✅ CommentReview ✅ Test ✅ — 수정 파일 N개 커밋]
 
 스모크 테스트 점검:
   확인 완료: A건 ([x] 처리됨)

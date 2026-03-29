@@ -1,7 +1,7 @@
 # /Phase
 
 BassMusicGear 프로젝트의 특정 Phase를 처음부터 끝까지 자동으로 진행한다.
-ToolCreator → CodeDeveloper → CodeReviewer → CodeBuilder → CodeCommenter → CodeTester
+ToolCreator → CodeDeveloper → CodeReviewer → CodeBuilder → CodeCommenter → CodeReviewer → CodeTester
 순서로 전문 에이전트를 순차 호출하여 해당 Phase를 완성한다.
 
 ## 입력
@@ -257,10 +257,29 @@ CRITICAL 항목이 없을 때까지 CodeReviewer 내부에서 반복한다.
  자명한 코드에는 주석을 생략해줘."
 ```
 
-**완료 확인**: CodeCommenter가 완료 보고를 반환하면 STEP 6으로 진행.
+**완료 확인**: CodeCommenter가 완료 보고를 반환하면 즉시 CodeReviewer를 호출해 주석을 검토한다.
+
+**CodeReviewer 에이전트 호출 (주석 검토):**
+```
+"STEP 5에서 주석이 추가된 다음 파일들의 주석을 검토해줘:
+ [STEP 5에서 주석이 추가된 파일 목록]
+
+ 검토 항목:
+ 1. 주석이 실제 코드 동작과 일치하는지 확인 (코드는 A인데 주석은 B라고 설명하는 경우 수정)
+ 2. 앰프 모델명, 회로 토폴로지, 컴포넌트 값 등 명칭이 CLAUDE.md/PRD.md 기준과 일치하는지 확인
+ 3. 오탈자, 문법 오류, 부정확한 수식 설명 수정
+ 4. 자명한 코드에 불필요하게 달린 주석 제거
+
+ 주석 내용만 수정한다. 로직 코드는 이 단계에서 변경하지 않는다.
+ CRITICAL(주석-코드 불일치) 항목이 없는 상태로 만들어줘."
+```
+
+주석 리뷰에서 **로직 코드 버그**가 발견된 경우:
+- 로직 수정 없이 주석만 교정하고 STEP 6으로 진행한다.
+- 버그 내용은 STEP 6 보고에 포함해 사용자에게 알린다 (로직 수정은 별도 처리).
 
 ```
-✅ STEP 5 완료 — 주석 추가 완료
+✅ STEP 5 완료 — 주석 추가 + 주석 리뷰 완료
 ```
 
 ---
@@ -268,7 +287,7 @@ CRITICAL 항목이 없을 때까지 CodeReviewer 내부에서 반복한다.
 ### STEP 6: CodeTester — 단위 테스트 + 스모크 테스트 (TEST LOOP)
 
 **테스트 실패로 앱 코드를 수정하면 반드시 다음 순서를 거친다:**
-`수정 → STEP 3(CodeReviewer) → STEP 4 Release 빌드 → STEP 5(CodeCommenter, 영향 파일만) → 테스트 재실행`
+`수정 → STEP 3(CodeReviewer) → STEP 4 Release 빌드 → STEP 5(CodeCommenter, 영향 파일만) → STEP 5 주석 리뷰(CodeReviewer, 영향 파일만) → 테스트 재실행`
 
 테스트 코드 자체의 문제라면 테스트만 수정하고 바로 재실행한다.
 
@@ -286,7 +305,7 @@ Phase N 스모크 테스트:
 - ctest로 실행 가능한 Catch2 테스트를 작성하고 통과시킨다.
 - 테스트 실패 원인 분류:
   ① 테스트 코드 문제 → 테스트만 수정 후 재실행
-  ② 앱 코드 문제 → 앱 코드 수정 → CodeReviewer 리뷰 → Release 빌드 → CodeCommenter(영향 파일) → 테스트 재실행
+  ② 앱 코드 문제 → 앱 코드 수정 → CodeReviewer 리뷰 → Release 빌드 → CodeCommenter(영향 파일) → CodeReviewer 주석 리뷰(영향 파일) → 테스트 재실행
 - 모든 단위 테스트가 통과할 때까지 반복한다.
 
 스모크 테스트:

@@ -219,3 +219,39 @@ PLAN.md Phase 6 작업량 분석 결과 Phase 6 구현으로 결정.
 1. **MOSFET** — JFET/Tube와 명확히 구분되는 독자적 캐릭터. Hartke 계열 앰프 모델 추가 시 사용 추천
 2. **BJT** — 가장 흔한 솔리드스테이트이지만 현재 JFET으로 어느 정도 커버됨. 낮은 우선순위
 3. **Op-Amp** — Aguilar Tone Hammer 모델 추가 시 사용. AGS(Aguilar Gain Stage) 회로 특성과 함께 구현
+
+---
+
+## 9. 참고 — 톤스택 타입 종류
+
+베이스 앰프에서 사용되는 톤스택(EQ) 회로 토폴로지 정리. 향후 앰프 모델 추가 시 참고.
+
+### 현재 구현된 타입 (Phase 2)
+
+| 타입 | 구현 방식 | 컨트롤 특성 | 대표 앰프 | 사용 모델 |
+|------|---------|-----------|---------|---------|
+| **Fender TMB** | 수동 RC 네트워크 전달 함수 이산화 (Yeh 2006) | Bass/Mid/Treble 세 컨트롤이 서로 상호작용. 중간값에서 자연스러운 미드 스쿱. 독립 필터로 구현 금지 | Fender Bassman 5F6-A, Fender Bassman 100 | Tweed Bass |
+| **James** | 독립 셸빙 바이쿼드 2개 + 미드 피킹 1개 | Bass/Treble 완전 독립 (서로 영향 없음). 셸빙 특성으로 자연스러운 곡선 | Orange AD200, Hiwatt 계열 | British Stack |
+| **Active Baxandall** | 피킹/셸빙 바이쿼드 조합 (능동 회로) | 능동 증폭으로 더 큰 부스트/컷 범위. 중간값에서 비교적 평탄 | Ampeg SVT (미드 포지션 스위치 포함) | American Vintage |
+| **BaxandallGrunt** | Active Baxandall + Grunt(저중역 드라이브) + Attack(고역 드라이브) 피킹 필터 추가 | Baxandall 기반에 드라이브 캐릭터 필터 2개 추가. 모던 메탈 성격 강화 | Darkglass B3K/B7K | Modern Micro |
+| **Markbass 4-band + VPF/VLE** | 4개 독립 바이쿼드(40/360/800/10kHz) + VPF 합성 필터 + VLE 로우패스 | 4밴드 완전 독립. VPF는 3개 필터 동시 적용(35Hz 부스트 + 380Hz 노치 + 10kHz 부스트). VLE는 가변 로우패스 | Markbass Little Mark III | Italian Clean |
+
+### 추가 구현 후보 타입 (Post-MVP 앰프 모델 추가 시)
+
+| 타입 | 구현 방식 | 컨트롤 특성 | 대표 앰프 | 비고 |
+|------|---------|-----------|---------|-----|
+| **Marshall 스타일 (Passive TMB 변형)** | Fender TMB와 동일한 RC 네트워크 이산화, 단 컴포넌트 값이 달라 중간값에서 더 깊은 미드 스쿱 발생 | Fender TMB보다 미드 스쿱이 강함. 기타 앰프에서 유래했으나 일부 베이스 앰프에도 적용 | Marshall Super Bass, 일부 빈티지 베이스 앰프 | Fender TMB 코드에 컴포넌트 값만 변경하면 구현 가능 |
+| **세미 파라메트릭 EQ** | Bass/Treble 셸빙 고정 + Mid는 Freq(스위프) + Level 두 컨트롤 | 미드 주파수를 사용자가 직접 선택 가능. 픽업 공명 대역 정밀 조정에 유용 | GK 800RB/1001RB, Mesa Subway D-800, Eden WT 시리즈 | GK 계열 앰프 모델 추가 시 사용. Freq 노브 = 바이쿼드 피킹 필터의 중심 주파수를 실시간 변경 |
+| **Aguilar OBP-3 스타일** | 저역 셸빙(40Hz) + 스위프 미드 피킹(400~800Hz) + 고역 셸빙(6.5kHz 또는 10kHz 전환) | 온보드 베이스 프리앰프에서 가장 인기 있는 3밴드. 미드 스위프 범위가 넓어 다양한 장르 대응 | Aguilar OBP-3 (베이스 내장 프리앰프), Aguilar Tone Hammer | Aguilar 앰프/페달 모델 추가 시 사용. Post-MVP 확장 앰프 중 Aguilar Tone Hammer에 해당 |
+| **GK 4밴드 독립 능동 EQ** | 4개 피킹/셸빙 바이쿼드 완전 독립 (60Hz / 250Hz / 1kHz / 4kHz) | 4밴드 모두 완전 독립, 상호작용 없음. 각 밴드 ±15dB. 정밀하고 예측 가능한 음색 조정 | Gallien-Krueger 800RB, 1001RB-II | GK 계열 앰프 모델 추가 시 사용. 현재 Italian Clean과 구조 유사하나 주파수/범위 다름 |
+| **Passive 단일 Tone 컨트롤** | 가변 커패시터 기반 고역 컷 (단일 RC 로우패스) | 노브 하나로 고역만 컷. 부스트 불가. 빈티지 앰프에 많음 | Ampeg B-15, 일부 소형 빈티지 앰프 | 구현 매우 간단. B-15 스튜디오 빈티지 모델 추가 시 사용 가능 |
+
+### 톤스택 선택 가이드 (Post-MVP 앰프 추가 시)
+
+| 장르 / 캐릭터 | 추천 톤스택 |
+|-------------|-----------|
+| 클래식 록 / 빈티지 | Fender TMB 또는 Marshall 변형 |
+| 재즈 / 스튜디오 | Passive 단일 Tone 또는 Aguilar OBP-3 |
+| 모던 메탈 / 슬랩 | Semi-parametric 또는 BaxandallGrunt |
+| 펑크 / R&B | Aguilar OBP-3 또는 GK 4밴드 |
+| 하이파이 / 투명한 클린 | GK 4밴드 독립 또는 Markbass 4-band |

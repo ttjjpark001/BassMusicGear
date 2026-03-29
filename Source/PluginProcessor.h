@@ -6,7 +6,7 @@
 /**
  * @brief BassMusicGear 플러그인 오디오 프로세서
  *
- * **신호 체인**: NoiseGate → Preamp(4xOS) → ToneStack → PowerAmp(Drive/Presence/Sag) → Cabinet(IR)
+ * **신호 체인**: NoiseGate → Tuner(YIN) → Compressor(VCA) → Preamp(4xOS) → ToneStack → PowerAmp(Drive/Presence/Sag) → Cabinet(IR)
  *
  * **5종 앰프 모델**: American Vintage / Tweed Bass / British Stack / Modern Micro / Italian Clean
  *

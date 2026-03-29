@@ -59,7 +59,7 @@ public:
     /**
      * @brief 오디오 버퍼를 신호 체인 전체에 통과시킨다.
      *
-     * Gate → Preamp → ToneStack → PowerAmp → Cabinet 순서로 처리.
+     * Gate → Tuner → Compressor → Preamp → ToneStack → PowerAmp → Cabinet 순서로 처리.
      * 각 블록은 In-place로 버퍼를 수정한다.
      *
      * @param buffer  모노 오디오 버퍼

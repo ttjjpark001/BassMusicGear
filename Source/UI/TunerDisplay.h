@@ -38,8 +38,13 @@ private:
 
     // 캐시된 표시 값 (타이머에서 갱신)
     juce::String noteName = "--";
-    float cents = 0.0f;
+    float cents = 0.0f;         // 스무딩된 센트 편차
+    float smoothedCents = 0.0f; // EMA 내부 상태
     bool detected = false;
+
+    // EMA 스무딩 계수 — 30Hz 갱신 기준 약 200ms 정착 시간
+    // alpha = 1 - exp(-1 / (30Hz * 0.2s)) ≈ 0.154
+    static constexpr float kCentsSmoothing = 0.15f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TunerDisplay)
 };

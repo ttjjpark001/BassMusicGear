@@ -344,3 +344,58 @@ BJT는 대중적이나 현재 JFET/Tube로 어느 정도 커버 가능하여 우
 - 전설적인 아티스트 연관성 (Jaco Pastorius)
 - 현재 어떤 MVP/Post-MVP 모델도 커버하지 않는 1960~70년대 재즈·펑크 베이스 톤
 - 회로 타입 기준으로도 BJT 유일 모델 → 프리앰프 타입 커버리지 완성
+
+---
+
+## 12. 참고 — 앰프 모델별 장르 적합성
+
+### MVP 5종
+
+| 앰프 모델 | 원본 참고 | 주력 장르 | 보조 장르 | 대표 아티스트 |
+|---------|---------|---------|---------|------------|
+| **American Vintage** | Ampeg SVT | 클래식 록, 하드록, 펑크 | 헤비메탈, R&B, 모타운 | Geddy Lee (Rush), Cliff Burton (Metallica), John Entwistle (The Who) |
+| **Tweed Bass** | Fender Bassman | 컨트리, 블루스, 빈티지 록 | 재즈, R&B, 50~60년대 팝 | 수많은 50~60년대 스튜디오/라이브 베이시스트 |
+| **British Stack** | Orange AD200 | 스토너 록, 둠 메탈, 헤비록 | 프로그레시브 록, 슬러지 메탈 | 많은 헤비록/둠 메탈 베이시스트 |
+| **Modern Micro** | Darkglass B3K | 모던 메탈, 프로그레시브 메탈 | 테크니컬 메탈, 데스 메탈, 모던 록 | Adam Nolly Getgood, 현대 메탈 세션 베이시스트 다수 |
+| **Italian Clean** | Markbass Little Mark III | 재즈, 펑크, 슬랩 | 팝, 네오소울, 현대 R&B | 많은 재즈·팝 세션 베이시스트 |
+
+**MVP 장르 커버리지 요약:**
+- 빈티지 록/클래식 록 ✅ (American Vintage, Tweed Bass)
+- 헤비/메탈 ✅ (British Stack, Modern Micro)
+- 재즈/펑크/클린 ✅ (Italian Clean)
+- 스튜디오 R&B/소울 🟡 (American Vintage로 부분 커버, 전용 모델 없음)
+- 가스펠/네오소울 🟡 (Italian Clean으로 부분 커버)
+
+---
+
+### Post-MVP 4종
+
+| 앰프 모델 | 원본 참고 | 주력 장르 | 보조 장르 | 대표 아티스트 |
+|---------|---------|---------|---------|------------|
+| **Ampeg B-15** | Ampeg B-15N | 모타운, 소울, 스튜디오 R&B | 재즈, 60~70년대 팝 | James Jamerson (Motown), Paul McCartney (Beatles 초기) |
+| **GK 800RB** | Gallien-Krueger 800RB | 슬랩, 펑크, 재즈 퓨전 | 컨트리, 팝, 세션 올라운더 | Flea (RHCP 일부), 다수의 세션 베이시스트 |
+| **Mesa Subway D-800** | Mesa Boogie Subway D-800 | 재즈, 블루스, 소울 | 팝, 아메리카나, 세션 올라운더 | 다양한 장르 세션 뮤지션 |
+| **Aguilar Tone Hammer** | Aguilar Tone Hammer 500 | 가스펠, R&B, 네오소울 | 펑크, 재즈, 소울 | 가스펠·R&B 베이시스트 다수 (Anthony Crawford 등) |
+
+**Post-MVP가 채우는 빈틈:**
+- 스튜디오 빈티지 R&B/소울 ✅ B-15 (MVP에 없던 장르)
+- 타이트한 슬랩/펑크 ✅ GK 800RB (Italian Clean보다 더 타이트한 클린)
+- 가스펠/네오소울 ✅ Aguilar Tone Hammer (MVP에 없던 장르)
+- 재즈·블루스 정밀 EQ ✅ Mesa D-800 (세미 파라메트릭으로 세밀한 주파수 조각)
+
+---
+
+### 전체 장르 → 앰프 매핑표
+
+| 장르 | 1순위 | 2순위 |
+|------|------|------|
+| 클래식 록 / 하드록 | American Vintage | Tweed Bass |
+| 컨트리 / 블루스 | Tweed Bass | GK 800RB |
+| 스토너 록 / 둠 메탈 | British Stack | American Vintage |
+| 모던 메탈 / 프로그레시브 메탈 | Modern Micro | British Stack |
+| 재즈 | Italian Clean | Ampeg B-15 / Mesa D-800 |
+| 펑크 / 슬랩 | GK 800RB | Italian Clean |
+| 모타운 / 스튜디오 R&B | Ampeg B-15 | American Vintage |
+| 가스펠 / 네오소울 | Aguilar Tone Hammer | Italian Clean |
+| 소울 / 블루스 | Mesa D-800 | Ampeg B-15 |
+| 팝 / 세션 올라운더 | Italian Clean | GK 800RB |

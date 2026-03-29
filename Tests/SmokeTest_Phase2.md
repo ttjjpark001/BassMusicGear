@@ -51,11 +51,11 @@ Phase 2 목표: 5종 앰프 모델 전체 구현, 모델 전환 UI 동작.
 > ⚠️ **Phase 9 이후 재확인 필요**: placeholder IR로는 앰프별 캐비닛 특성이 동일하게 나타나 Preamp 특성을
 > 청각적으로 구분하기 어렵다. 실제 IR 파일 연결(Phase 9) 완료 후 아래 항목을 다시 점검한다.
 
-- [ ] American Vintage/Tweed Bass/British Stack: Tube12AX7 프리앰프 — 드라이브 시 짝수 고조파 왜곡(따뜻한 톤) 청취 (Phase 9 이후 재확인)
+- [ ] American Vintage/Tweed Bass/British Stack: Tube12AX7 프리앰프 — **프리앰프 Gain**을 높이면 짝수 고조파 왜곡(따뜻한 톤) 청취 (Phase 9 이후 재확인 — PowerAmp Drive가 아닌 Preamp Gain으로 테스트)
   - 단위 테스트로 검증됨: JFET 출력 신호 무결성(NaN/Inf 없음, RMS 유효 범위)
-- [ ] Modern Micro: JFET 병렬 구조 — 클린 톤 유지하면서 드라이브 시 미세한 그릿 추가 청취 (Phase 9 이후 재확인)
+- [ ] Modern Micro: JFET 병렬 구조 — **프리앰프 Gain**을 높이면 클린 톤 유지하면서 미세한 그릿 추가 청취 (Phase 9 이후 재확인 — PowerAmp Drive가 아닌 Preamp Gain으로 테스트)
   - 단위 테스트로 검증됨: JFET 출력 신호 무결성(NaN/Inf 없음, RMS 유효 범위)
-- [ ] Italian Clean: ClassDLinear — 드라이브를 올려도 왜곡 없는 클린 톤 유지 (Phase 9 이후 재확인)
+- [ ] Italian Clean: ClassDLinear — **프리앰프 Gain**을 최대로 올려도 왜곡 없는 클린 톤 유지 (Phase 9 이후 재확인 — PowerAmp Drive가 아닌 Preamp Gain으로 테스트)
   - 단위 테스트로 검증됨: 선형성 비율 2:1 ±10%
 
 ---

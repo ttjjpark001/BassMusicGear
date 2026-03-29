@@ -38,7 +38,7 @@ Phase 1 마일스톤: 베이스 신호가 Gate → Preamp → ToneStack → Powe
 ## 프리앰프 (Tweed Bass 모델)
 
 - [x] Input Gain 노브 최소 → 아주 작은 출력 또는 무음 (확인 완료)
-- [x] Input Gain 노브 최대 → 강한 드라이브(포화) 소리 출력 (확인 완료)
+- [x] Input Gain 노브 최대 → 강한 게인(포화) 소리 출력 (확인 완료 — 프리앰프 포화는 Gain 노브로 확인, PowerAmp의 Drive와 무관)
 - [x] Volume 노브 조절 → 출력 레벨 변화 확인 (확인 완료)
 
 ---

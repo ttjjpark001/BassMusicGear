@@ -71,7 +71,26 @@ $ARGUMENTS
 - `테스트 기준`
 - `실행 프롬프트`
 
-**0-D. BackLog.md에서 이월 항목 로드**
+**0-D. CLAUDE.md에서 Phase N 적용 규칙 추출**
+
+`CLAUDE.md`를 읽어 Phase N의 P0 구현 항목에 해당하는 DSP/UI 모듈의 규칙을 추출한다.
+
+추출 기준:
+- 0-C에서 파악한 **구현 대상 모듈** (Preamp, ToneStack, Overdrive, Cabinet 등)과 관련된 규칙만 선별
+- "금지" / "필수" / "~해야 한다" / "~하지 말 것" 표현을 포함한 규칙 우선 추출
+- 아키텍처 규칙(processBlock RT 금지, APVTS 패턴 등)은 매 Phase 공통 포함
+
+추출 결과를 `CLAUDE_RULES`로 기록한다. 형식 예시:
+```
+CLAUDE_RULES:
+- [TMB] RC 네트워크 전달 함수 이산화. 독립 필터 3개로 대체 금지
+- [VPF] 3필터 모두 구현: ①35Hz 저셸프 ②380Hz 노치 ③10kHz 고셸프 (생략 금지)
+- [Preamp/Overdrive] 최소 4x 오버샘플링 (Fuzz는 8x)
+- [공통] processBlock 내 new/delete/mutex/파일I/O 절대 금지
+- [공통] setLatencySamples(total) 호출 필수
+```
+
+**0-E. BackLog.md에서 이월 항목 로드**
 
 `BackLog.md`를 읽어 Phase N에서 처리해야 할 항목을 추출한다:
 ```
@@ -89,6 +108,17 @@ $ARGUMENTS
 
 추출 결과를 `BACKLOG_CARRY`로 기록한다.
 항목이 없으면 `BACKLOG_CARRY = 없음`으로 기록하고 넘어간다.
+
+**PRD.md에서 앰프 모델 기준 확인**
+
+Phase N이 앰프 모델(ToneStack, Preamp, PowerAmp, AmpModelLibrary 등)을 구현하는 경우,
+`PRD.md`의 앰프 모델 표를 읽어 각 모델의 실제 앰프 이름을 확인하고 `CLAUDE_RULES`에 추가한다:
+```
+- [앰프 모델] 주석/이름은 PRD.md 기준 실제 앰프와 일치시킬 것
+  (예: American Vintage=Ampeg SVT, Tweed Bass=Fender Bassman,
+       British Stack=Orange AD200, Modern Micro=Darkglass B3K,
+       Italian Clean=Markbass Little Mark III)
+```
 
 ---
 
@@ -121,12 +151,18 @@ $ARGUMENTS
 Phase N 정보:
 - 목표: [0-C에서 추출한 목표]
 - ✅ CARRY (PLAN): [PLAN.md 이월 항목, 있을 경우]
-- ✅ CARRY (BackLog): [0-D에서 추출한 BACKLOG_CARRY, 없으면 '없음']
+- ✅ CARRY (BackLog): [0-E에서 추출한 BACKLOG_CARRY, 없으면 '없음']
 - P0 구현 항목: [구현 항목 목록]
 - P1 항목 (건너뜀): [P1 항목 목록]
 - 실행 프롬프트: [실행 프롬프트 전문]
 
-PRD.md와 CLAUDE.md의 관련 섹션을 함께 참고해서 구현해줘.
+━━━━ 반드시 준수할 CLAUDE.md 규칙 ━━━━
+[0-D에서 추출한 CLAUDE_RULES 전체 목록]
+
+위 규칙은 구현 편의를 위해 단순화하거나 생략할 수 없다.
+특히 '금지' 항목은 어떤 이유로도 우회하지 않는다.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 BackLog CARRY 항목은 P0 항목과 동일한 우선순위로 반드시 구현한다.
 P1 항목은 건너뛰고 P0 항목만 구현한다."
 ```
@@ -165,8 +201,21 @@ P1 항목은 건너뛰고 P0 항목만 구현한다."
 "STEP 2~3에서 작성된 다음 파일들을 종합 검토해줘:
  [STEP 2에서 기록한 파일 목록]
 
- 버그 탐지 및 수정, 데드 코드 제거, 코딩 스타일 통일, 일관성 점검을
- 순서대로 수행하고, DSP 파일은 DspReviewer와 협업해서 RT 안전성도 확인해줘."
+ 검토 순서:
+ 1. CLAUDE.md 규칙 준수 여부 항목별 대조
+    아래 규칙이 코드에 실제로 반영되어 있는지 파일을 직접 읽어 확인한다.
+    위반 발견 시 CRITICAL로 분류하고 즉시 수정한다:
+    [0-D에서 추출한 CLAUDE_RULES 전체 목록]
+
+ 2. 주석 정확성 검증
+    - 주석이 실제 코드 동작과 일치하는지 확인 (코드는 A인데 주석은 B라고 설명하는 경우 수정)
+    - 앰프 모델명, 회로 토폴로지, 컴포넌트 값 등 명칭이 CLAUDE.md/PRD.md 기준과 일치하는지 확인
+      (예: "Marshall/Hiwatt" → "Orange AD200", "Markbass/Aguilar" → "Darkglass B3K")
+    - 위반 발견 시 주석을 즉시 수정한다
+
+ 3. 버그 탐지 및 수정
+ 4. 데드 코드 제거, 코딩 스타일 통일, 일관성 점검
+ 5. DSP 파일은 DspReviewer와 협업해서 RT 안전성 확인"
 ```
 
 **완료 확인**:

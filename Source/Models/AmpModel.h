@@ -17,8 +17,8 @@ enum class AmpModelId
 {
     AmericanVintage = 0,    // Ampeg SVT 스타일: Baxandall + Tube6550 + 8x10 SVT
     TweedBass,              // Fender Bassman 스타일: TMB + Tube6550 + 4x10 JBL
-    BritishStack,           // Marshall/Hiwatt 스타일: James + TubeEL34 + 2x12 British
-    ModernMicro,            // Markbass/Aguilar 스타일: BaxandallGrunt + JFET + SolidState + 2x10 Modern
+    BritishStack,           // Orange AD200 스타일: James + TubeEL34 + 2x12 British
+    ModernMicro,            // Darkglass B3K 스타일: BaxandallGrunt + JFET + SolidState + 2x10 Modern
     ItalianClean,           // Markbass clean 스타일: MarkbassFourBand + ClassD + ClassD
     NumModels
 };

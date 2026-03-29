@@ -19,9 +19,9 @@ Standalone 실행 파일 경로:
 
 ## Standalone 기본 동작 (수동)
 
-- [ ] Standalone 실행 → 창 표시 (800×500), 크래시 없음
-- [ ] 창 타이틀 또는 본문에 "BassMusicGear" 텍스트 표시
-- [ ] 앱 종료 → 크래시 없음
+- [x] Standalone 실행 → 창 표시 (800×500), 크래시 없음 (Phase 3 테스트 중 확인 완료)
+- [x] 창 타이틀 또는 본문에 "BassMusicGear" 텍스트 표시 (Phase 3 테스트 중 확인 완료)
+- [x] 앱 종료 → 크래시 없음 (Phase 3 테스트 중 확인 완료)
 
 ---
 

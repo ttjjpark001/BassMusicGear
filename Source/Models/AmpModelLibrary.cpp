@@ -37,7 +37,7 @@ const std::array<AmpModel, AmpModelLibrary::numModels> AmpModelLibrary::models =
     {
         AmpModelId::ModernMicro,
         "Modern Micro",
-        ToneStackType::BaxandallGrunt,      // Baxandall + Grunt 깊이 조절
+        ToneStackType::BaxandallGrunt,      // Baxandall + Grunt 깊이 조절 (Darkglass B3K 스타일)
         PreampType::JFETParallel,           // 평행 드라이/드라이브 혼합
         PowerAmpType::SolidState,           // 경하드 클리핑 (현대식 tight)
         false,                              // Sag 미사용 (솔리드스테이트)

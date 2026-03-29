@@ -51,6 +51,6 @@ void PluginEditor::resized()
 
     area.removeFromTop (5);
 
-    // Cabinet selector below
-    cabinetSelector.setBounds (area.removeFromTop (80).reduced (200, 0));
+    // Cabinet selector below (최소 95px: 패딩20 + 라벨20 + ComboBox25 + 간격5 + 버튼22 = 92px)
+    cabinetSelector.setBounds (area.removeFromTop (95).reduced (200, 0));
 }

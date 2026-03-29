@@ -27,7 +27,7 @@
  *
  * **파워앰프 타입별 특성**:
  * - Tube6550: 부드러운 포화 곡선 (high headroom) → Ampeg SVT
- * - TubeEL34: 빠른 포화 (낮은 headroom) → Marshall/Hiwatt
+ * - TubeEL34: 빠른 포화 (낮은 headroom) → Orange AD200
  * - SolidState: 경하드 클리핑 → Markbass 현대식
  * - ClassD: 최소 왜곡 (선형) → Italian Clean
  */

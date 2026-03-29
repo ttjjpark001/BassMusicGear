@@ -24,7 +24,7 @@ CabinetSelector::CabinetSelector (juce::AudioProcessorValueTreeState& apvts,
     irCombo.addItem ("8x10 SVT",      1);        // Ampeg SVT 스타일
     irCombo.addItem ("4x10 JBL",      2);        // Fender Bassman 스타일
     irCombo.addItem ("1x15 Vintage",  3);        // 빈티지 1x15 캐비닛
-    irCombo.addItem ("2x12 British",  4);        // Marshall/Hiwatt 스타일
+    irCombo.addItem ("2x12 British",  4);        // Orange AD200 스타일
     irCombo.addItem ("2x10 Modern",   5);        // 현대식 compact 캐비닛
     addAndMakeVisible (irCombo);
 
@@ -117,7 +117,7 @@ void CabinetSelector::loadSelectedIR()
             cabinet.loadIRFromBinaryData (BinaryData::ir_1x15_vintage_wav,
                                            BinaryData::ir_1x15_vintage_wavSize);
             break;
-        case 3:  // 2x12 British (Marshall/Hiwatt 스타일)
+        case 3:  // 2x12 British (Orange AD200 스타일)
             cabinet.loadIRFromBinaryData (BinaryData::ir_2x12_british_wav,
                                            BinaryData::ir_2x12_british_wavSize);
             break;

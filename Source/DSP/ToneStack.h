@@ -21,17 +21,17 @@
  *    - Bass/Mid/Treble 각각 독립적인 피킹/셸빙 필터
  *    - Mid Position: 5개 주파수 선택(250/500/800/1.5k/3kHz)
  *
- * 3. **James** (British Stack, Marshall 스타일): 2-band 셸빙 + 1-band 미드 피킹
+ * 3. **James** (British Stack, Orange AD200 스타일): 2-band 셸빙 + 1-band 미드 피킹
  *    - Bass/Treble은 독립적 셸빙, Mid는 피킹
  *    - 영국식 스택 특성: 중간대역 제어 용이
  *
- * 4. **BaxandallGrunt** (Modern Micro, Markbass Microbe): Baxandall + 깊이 조절
+ * 4. **BaxandallGrunt** (Modern Micro, Darkglass B3K): Baxandall + 깊이 조절
  *    - Baxandall 기반 + Grunt(HPF+LPF 하이패스/로우패스 깊이)
  *    - Attack: 반응 속도 조절
  *
  * 5. **MarkbassFourBand** (Italian Clean, Markbass 4-band): 4개 고정주파수 + VPF/VLE
  *    - 40/360/800/10kHz 각각 독립 바이쿼드 (Constant-Q 피킹)
- *    - VPF(Vintage Presence Filter): 35Hz 저음 + 380Hz 노치 + 10kHz 고음 (3필터 합산)
+ *    - VPF(Vintage Presence Filter): 35Hz 저셸프 + 380Hz 노치 + 10kHz 고셸프 (3필터 직렬)
  *    - VLE(Vintage Loudness Enhance): 상태변수 로우패스 (20kHz ~ 4kHz)
  *
  * **스레드 안전성**:
@@ -201,7 +201,7 @@ private:
     void computeBaxandallCoefficients (float bass, float mid, float treble);
 
     /**
-     * @brief James(British Stack, Marshall 스타일) 계수 계산
+     * @brief James(British Stack, Orange AD200 스타일) 계수 계산
      *
      * 영국식 스택 특성: Bass/Treble은 독립 셸빙, Mid는 피킹
      * - Bass: 100Hz 이하 셸빙
@@ -213,7 +213,7 @@ private:
     void computeJamesCoefficients (float bass, float mid, float treble);
 
     /**
-     * @brief BaxandallGrunt(Modern Micro, Markbass Microbe 스타일) 계수 계산
+     * @brief BaxandallGrunt(Modern Micro, Darkglass B3K 스타일) 계수 계산
      *
      * Baxandall 기반 + Grunt/Attack 추가 레이어:
      * - Bass/Mid/Treble: Baxandall 3-band
@@ -242,8 +242,8 @@ private:
     // - Baxandall: 4개 (Bass/Mid/Treble + reserve)
     // - James: 3개 (Bass shelving / Mid peaking / Treble shelving)
     // - BaxandallGrunt: 5개 (Bass/Mid/Treble + Grunt HPF + Grunt LPF)
-    // - MarkbassFourBand: 6개 (40/360/800/10kHz 밴드 + VPF 저셸프 + VPF 노치)
-    static constexpr int maxFilters = 6;
+    // - MarkbassFourBand: 7개 (40/360/800/10kHz 밴드 + VPF 저셸프 + VPF 노치 + VPF 고셸프)
+    static constexpr int maxFilters = 7;
     juce::dsp::IIR::Filter<float> filters[maxFilters];  // 각 필터는 바이쿼드 구현
     int activeFilterCount = 3;                          // 현재 활성 필터 개수
 

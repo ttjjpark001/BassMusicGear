@@ -85,9 +85,9 @@ void ToneStack::setType (ToneStackType type)
             vleActive = false;
             break;
         case ToneStackType::MarkbassFourBand:
-            // Italian Clean: 6개 필터 (40/360/800/10kHz + VPF low shelf + VPF notch)
-            // + VLE 로우패스(StateVariableTPTFilter)별도
-            activeFilterCount = 6;
+            // Italian Clean: 7개 필터 (40/360/800/10kHz + VPF 저셸프 + VPF 노치 + VPF 고셸프)
+            // + VLE 로우패스(StateVariableTPTFilter) 별도
+            activeFilterCount = 7;
             vleActive = true;  // VLE(Vintage Loudness Enhance) 로우패스 활성화
             break;
     }
@@ -209,54 +209,38 @@ void ToneStack::updateMarkbassExtras (float vpf, float vle)
             pendingCoeffs[idx][i] = raw[i];
     };
 
-    // Filter 4: Combined VPF low shelf (35Hz boost) + high shelf (10kHz boost)
-    // We implement as two cascaded effects. Here we use filter[4] for the 35Hz+10kHz shelving
-    // and filter[5] for the 380Hz notch.
+    // VPF: 3개 필터 직렬 배치
+    //   filter[4] = 35Hz 저셸프 부스트 (서브베이스 강조)
+    //   filter[5] = 380Hz 노치 (미드 스쿱)
+    //   filter[6] = 10kHz 고셸프 부스트 (고역 에어 강조)
     if (vpfDepthDB > 0.1f)
     {
-        // 35Hz low shelf boost
+        // 35Hz 저셸프: 서브베이스 부스트
         auto lowShelf = juce::dsp::IIR::Coefficients<float>::makeLowShelf (
             sampleRate, 35.0f, 0.707f,
             juce::Decibels::decibelsToGain (vpfDepthDB));
-
-        // 10kHz high shelf boost
-        auto highShelf = juce::dsp::IIR::Coefficients<float>::makeHighShelf (
-            sampleRate, 10000.0f, 0.707f,
-            juce::Decibels::decibelsToGain (vpfDepthDB));
-
-        // Store low shelf in filter[4]
         copyCoeffs (4, lowShelf);
 
-        // For the 380Hz notch (peaking cut), use filter[5]
+        // 380Hz 노치: 미드 스쿱 (피킹 컷)
         auto notch = juce::dsp::IIR::Coefficients<float>::makePeakFilter (
             sampleRate, 380.0f, 2.0f,
             juce::Decibels::decibelsToGain (-vpfDepthDB));
         copyCoeffs (5, notch);
 
-        // We need to combine 35Hz shelf and 10kHz shelf. Since we only have one filter slot,
-        // we'll use filter[4] for the low shelf. The high shelf will be folded into
-        // the original 10kHz band (filter[3]) by adding to its gain.
-        // Actually, let's use a simpler approach: filter[4] = low shelf, filter[5] = notch.
-        // The 10kHz boost is already partly handled by the 10kHz band in filter[3].
-        // To properly implement all three VPF filters, we repurpose:
-        //   filter[4] = 35Hz low shelf boost + 10kHz high shelf boost (we pick one)
-        //   filter[5] = 380Hz notch
-
-        // For accuracy: store the 10kHz high shelf in filter[4] and combine with 35Hz
-        // Actually the simplest correct approach is cascading. Let's use filter[4] as low shelf,
-        // and bake the high shelf gain into the treble band.
-        // CORRECTION: For Phase 2, combine 35Hz shelf and 10kHz shelf additively in signal domain
-        // by putting them into separate filter slots. But we only have 6 slots total (4 bands + 2 VPF).
-        // So: filter[4] = 35Hz low shelf, filter[5] = 380Hz notch.
-        // The 10kHz high shelf boost is added to filter[3] (10kHz band).
+        // 10kHz 고셸프: 고역 에어 부스트
+        auto highShelf = juce::dsp::IIR::Coefficients<float>::makeHighShelf (
+            sampleRate, 10000.0f, 0.707f,
+            juce::Decibels::decibelsToGain (vpfDepthDB));
+        copyCoeffs (6, highShelf);
     }
     else
     {
-        // VPF off: flat filters
+        // VPF off: 전 슬롯 평탄 (패스스루)
         auto flat = juce::dsp::IIR::Coefficients<float>::makePeakFilter (
             sampleRate, 1000.0f, 0.707f, 1.0f);
         copyCoeffs (4, flat);
         copyCoeffs (5, flat);
+        copyCoeffs (6, flat);
     }
 
     // VLE: StateVariableTPTFilter lowpass cutoff mapping
@@ -279,10 +263,15 @@ void ToneStack::updateModernExtras (float grunt, float attack)
 
 void ToneStack::computeTMBCoefficients (float bass, float mid, float treble)
 {
-    // TMB passive network: three controls interact.
-    // Simplified implementation using interacting shelving/peaking filters.
-    // Bass: 80Hz low shelf, Mid: interaction with bass/treble range, Treble: 3kHz high shelf
-    // The mid control affects the overall level and scoop depth around 500Hz.
+    // Fender Bassman 5F6-A 수동 RC 네트워크 근사 구현
+    //
+    // 핵심 물리 특성: Bass(R1=250kΩ)와 Treble(C1=250pF 경유) 컨트롤이
+    // Mid 섹션(R3=25kΩ, C2=20nF)의 임피던스 경로를 공유한다.
+    // Bass와 Treble을 동시에 부스트하면 공통 임피던스 로딩으로 인해
+    // 미드 대역(~500Hz)에 자연 감쇠(스쿱)가 발생한다 — TMB의 특징적 "스마일 커브".
+    //
+    // 구현: 독립 필터 3개 + bass/treble 부스트 교차 항(cross-term)으로 상호작용 근사
+    // (완전한 이산화 전달 함수 대신 경험적 근사로 핵심 음색 특성을 재현)
 
     auto copyCoeffs = [this] (int idx, juce::dsp::IIR::Coefficients<float>::Ptr src)
     {
@@ -291,29 +280,41 @@ void ToneStack::computeTMBCoefficients (float bass, float mid, float treble)
             pendingCoeffs[idx][i] = raw[i];
     };
 
-    // TMB interaction: mid affects bass and treble effective gains
-    const float midInteraction = 0.3f * (mid - 0.5f);
+    const float fs = (float)sampleRate;
 
-    const float bassGainDB   = (bass - 0.5f) * 30.0f + midInteraction * 5.0f;
-    const float trebleGainDB = (treble - 0.5f) * 30.0f + midInteraction * 5.0f;
+    // 각 컨트롤의 게인(dB) — 중앙(0.5) = 0dB
+    const float bassGainDB   = (bass   - 0.5f) * 28.0f;  // ±14dB
+    const float trebleGainDB = (treble - 0.5f) * 28.0f;  // ±14dB
 
-    // Mid scoops around 500Hz. Mid=0 = deep scoop, Mid=1 = boost
-    const float midGainDB = (mid - 0.5f) * 24.0f;
+    // --- RC 네트워크 상호작용: bass/treble 동시 부스트 → mid 자연 스쿱 ---
+    // 물리 근거: 두 컨트롤이 부스트 위치일 때만 공통 경로 로딩이 발생함
+    // 스쿱 깊이 ≈ min(bassBoost, trebleBoost) × 0.6 (경험적 상수)
+    const float bassBoostDB   = std::max (0.0f, bassGainDB);
+    const float trebleBoostDB = std::max (0.0f, trebleGainDB);
+    const float interactionScoopDB = std::min (bassBoostDB, trebleBoostDB) * 0.6f;
 
-    // Bass: 80Hz low shelf
+    // Mid 컨트롤: 직접 게인 ± 상호작용 스쿱 보상
+    // - Mid=0.5(중앙): 직접 게인 0dB, 스쿱은 bass/treble 상태에 따라 결정
+    // - Mid=1.0(최대): +10dB 직접 부스트로 스쿱 상쇄 가능
+    // - Mid=0.0(최소): -10dB로 스쿱 심화
+    const float midDirectDB = (mid - 0.5f) * 20.0f;
+    const float midGainDB   = midDirectDB - interactionScoopDB;
+
+    // Mid 컨트롤이 올라갈수록 스쿱 중심 주파수가 약간 상승 (임피던스 비율 변화)
+    const float midFreq = 480.0f + mid * 200.0f;   // 480~680Hz
+    const float midQ    = 0.9f  + mid * 0.5f;      // Q 0.9~1.4
+
+    // --- Filter 0: Bass 저셸프 (80Hz) ---
     copyCoeffs (0, juce::dsp::IIR::Coefficients<float>::makeLowShelf (
-        sampleRate, 80.0f, 0.707f,
-        juce::Decibels::decibelsToGain (bassGainDB)));
+        fs, 80.0f, 0.707f, juce::Decibels::decibelsToGain (bassGainDB)));
 
-    // Mid: 500Hz peaking (Q=1.5)
+    // --- Filter 1: Mid 피킹/노치 (480~680Hz) — 핵심 TMB 상호작용 ---
     copyCoeffs (1, juce::dsp::IIR::Coefficients<float>::makePeakFilter (
-        sampleRate, 500.0f, 1.5f,
-        juce::Decibels::decibelsToGain (midGainDB)));
+        fs, midFreq, midQ, juce::Decibels::decibelsToGain (midGainDB)));
 
-    // Treble: 3kHz high shelf
+    // --- Filter 2: Treble 고셸프 (2kHz) ---
     copyCoeffs (2, juce::dsp::IIR::Coefficients<float>::makeHighShelf (
-        sampleRate, 1000.0f, 0.707f,
-        juce::Decibels::decibelsToGain (trebleGainDB)));
+        fs, 2000.0f, 0.707f, juce::Decibels::decibelsToGain (trebleGainDB)));
 }
 
 //==============================================================================
@@ -480,8 +481,9 @@ void ToneStack::computeMarkbassCoefficients (float bass, float mid, float treble
     // updateMarkbassExtras() will overwrite these when VPF/VLE are adjusted
     auto flat = juce::dsp::IIR::Coefficients<float>::makePeakFilter (
         sampleRate, 1000.0f, 0.707f, 1.0f);
-    copyCoeffs (4, flat);
-    copyCoeffs (5, flat);
+    copyCoeffs (4, flat);  // VPF 저셸프 (35Hz)
+    copyCoeffs (5, flat);  // VPF 노치 (380Hz)
+    copyCoeffs (6, flat);  // VPF 고셸프 (10kHz)
 }
 
 //==============================================================================

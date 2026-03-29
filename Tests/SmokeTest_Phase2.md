@@ -12,21 +12,21 @@ Phase 2 목표: 5종 앰프 모델 전체 구현, 모델 전환 UI 동작.
 
 ## 기본 동작
 
-- [ ] Standalone 실행 → 창 표시, 크래시 없음 (수동 확인 필요)
-- [ ] 오디오 인터페이스 입력 → 처리된 소리 출력 (수동 확인 필요)
-- [ ] 앱 종료 → 크래시 없음 (수동 확인 필요)
+- [x] Standalone 실행 → 창 표시, 크래시 없음 (Phase 3 테스트 중 확인 완료)
+- [x] 오디오 인터페이스 입력 → 처리된 소리 출력 (Phase 3 튜너 테스트 중 확인 완료)
+- [x] 앱 종료 → 크래시 없음 (Phase 3 테스트 중 확인 완료)
 
 ---
 
 ## 앰프 모델 전환
 
-- [ ] 5종 모델 선택 ComboBox 표시 확인 (수동 확인 필요)
-- [ ] American Vintage(Baxandall) 선택 → Bass/Mid/Treble/Mid Position 노브 표시 (수동 확인 필요)
-- [ ] Tweed Bass(TMB) 선택 → Bass/Mid/Treble 노브 표시, 상호작용형 특성 (수동 확인 필요)
-- [ ] British Stack(James) 선택 → Bass/Mid/Treble 노브 표시, 독립 셸빙 특성 (수동 확인 필요)
-- [ ] Modern Micro(BaxandallGrunt) 선택 → Bass/Mid/Treble/Grunt/Attack 노브 표시 (수동 확인 필요)
-- [ ] Italian Clean(MarkbassFourBand) 선택 → Bass/Mid/Treble/VPF/VLE 노브 표시 (수동 확인 필요)
-- [ ] 모델 전환 시 노브 레이아웃이 즉시 변경됨 (수동 확인 필요)
+- [x] 5종 모델 선택 ComboBox 표시 확인 (확인 완료)
+- [x] American Vintage(Baxandall) 선택 → Bass/Mid/Treble/Mid Position 노브 표시 (확인 완료)
+- [x] Tweed Bass(TMB) 선택 → Bass/Mid/Treble 노브 표시, 상호작용형 특성 (확인 완료)
+- [x] British Stack(James) 선택 → Bass/Mid/Treble 노브 표시, 독립 셸빙 특성 (확인 완료)
+- [x] Modern Micro(BaxandallGrunt) 선택 → Bass/Mid/Treble/Grunt/Attack 노브 표시 (확인 완료)
+- [x] Italian Clean(MarkbassFourBand) 선택 → Bass/Mid/Treble/VPF/VLE 노브 표시 (확인 완료)
+- [x] 모델 전환 시 노브 레이아웃이 즉시 변경됨 (확인 완료)
 
 ---
 
@@ -55,17 +55,17 @@ Phase 2 목표: 5종 앰프 모델 전체 구현, 모델 전환 UI 동작.
 
 ## Cabinet IR 선택
 
-- [ ] CabinetSelector: 내장 IR 목록 표시 (4x10 JBL, 1x15 Vintage, 2x12 British, 2x10 Modern 등) (수동 확인 필요)
-- [ ] IR 전환 시 음색 변화 청취 가능 (수동 확인 필요)
-- [ ] Cabinet bypass 토글 ON → OFF 전환 시 음색 변화 (수동 확인 필요)
+- [x] CabinetSelector: 내장 IR 목록 표시 (4x10 JBL, 1x15 Vintage, 2x12 British, 2x10 Modern 등) (확인 완료)
+- [ ] IR 전환 시 음색 변화 청취 가능 (Phase 9 작업 후 확인 필요 — 현재 모든 IR이 placeholder로 음색 차이 없음)
+- [x] Cabinet bypass 토글 ON → OFF 전환 시 음색 변화 (확인 완료)
 
 ---
 
 ## 신호 체인 안정성
 
-- [ ] 모델 전환 중 팝/클릭 노이즈 없음 (수동 확인 필요)
-- [ ] 노브 급격한 변경 시 노이즈 없음 (수동 확인 필요)
-- [ ] 연속 재생 중 10분 이상 크래시 없음 (수동 확인 필요)
+- [x] 모델 전환 중 팝/클릭 노이즈 없음 (확인 완료)
+- [x] 노브 급격한 변경 시 노이즈 없음 (확인 완료)
+- [x] 연속 재생 중 10분 이상 크래시 없음 (확인 완료)
 
 ---
 

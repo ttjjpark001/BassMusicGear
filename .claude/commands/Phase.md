@@ -1,7 +1,7 @@
 # /Phase
 
 BassMusicGear 프로젝트의 특정 Phase를 처음부터 끝까지 자동으로 진행한다.
-CodeDeveloper → CodeReviewer → CodeBuilder → CodeCommenter → CodeTester
+ToolCreator → CodeDeveloper → CodeReviewer → CodeBuilder → CodeCommenter → CodeTester
 순서로 전문 에이전트를 순차 호출하여 해당 Phase를 완성한다.
 
 ## 입력

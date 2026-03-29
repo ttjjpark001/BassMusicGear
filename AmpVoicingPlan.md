@@ -188,3 +188,34 @@ PLAN.md Phase 6 작업량 분석 결과 Phase 6 구현으로 결정.
 - `Source/Models/AmpModel.h` — 앰프 모델 데이터 구조
 - `Source/Models/AmpModelLibrary.cpp` — 5종 앰프 등록
 - `Source/DSP/SignalChain.cpp` — 신호 체인 조립
+
+---
+
+## 8. 참고 — 프리앰프 타입 종류
+
+베이스 앰프에서 사용되는 프리앰프 회로 토폴로지 정리. 향후 앰프 모델 추가 시 참고.
+
+### 현재 구현된 타입 (Phase 1~2)
+
+| 타입 | 포화 특성 | 고조파 특성 | 대표 앰프 | 사용 모델 |
+|------|---------|-----------|---------|---------|
+| **Tube (12AX7/ECC83)** | 부드러운 소프트클리핑, 점진적 포화 | 짝수 고조파 강조 → 따뜻하고 풍부한 음색 | Ampeg SVT, Orange AD200, Fender Bassman | American Vintage / Tweed Bass / British Stack |
+| **JFET** | 튜브와 유사한 비대칭 클리핑, 패러렐 클린 블렌드 구조 | 튜브보다 짝수 고조파 적음, 타이트하고 그릿 있는 드라이브 | Darkglass B3K/B7K, SansAmp Bass Driver | Modern Micro |
+| **Class D (선형)** | 왜곡 없음, 최대 헤드룸 유지 | 고조파 발생 없음 — 완전 클린 | Markbass Little Mark III, TC Electronic | Italian Clean |
+
+> **테스트 주의**: 앰프 간 Preamp 타입 차이는 **Preamp Gain 노브**를 높여야 청취로 구분 가능.
+> PowerAmp의 Drive 노브는 모든 앰프에서 동일한 PowerAmp 모듈을 구동하므로 앰프 간 차이가 없다.
+
+### 추가 구현 후보 타입 (Post-MVP 앰프 모델 추가 시)
+
+| 타입 | 포화 특성 | 고조파 특성 | 대표 앰프 | 비고 |
+|------|---------|-----------|---------|-----|
+| **MOSFET** | 부드러운 소프트클리핑, Class D보다 따뜻함 | 튜브에 가깝지만 더 클린, 미세한 짝수 고조파 | Hartke LH500/LH1000, 일부 GK 모델 | 현재 미구현 타입 중 가장 독자적 캐릭터 |
+| **BJT (Bipolar Junction Transistor)** | 딱딱한 하드클리핑 경향, 트랜지스터 특유의 클리핑 | 홀수 고조파 강조 → 공격적이고 날카로운 드라이브 | Peavey Mark 시리즈, 입문/중급 앰프 다수 | 가장 흔한 솔리드스테이트 타입 |
+| **Op-Amp (연산증폭기)** | 높은 헤드룸, Class D와 유사하지만 능동 EQ 회로와 결합 | 헤드룸 내에서는 선형, 클리핑 시 딱딱한 특성 | Aguilar Tone Hammer, MXR Bass DI+, EBS MicroBass | 페달보드 프리앰프/DI 박스에 많이 사용 |
+
+### 우선순위 추천 (Post-MVP 앰프 추가 순서)
+
+1. **MOSFET** — JFET/Tube와 명확히 구분되는 독자적 캐릭터. Hartke 계열 앰프 모델 추가 시 사용 추천
+2. **BJT** — 가장 흔한 솔리드스테이트이지만 현재 JFET으로 어느 정도 커버됨. 낮은 우선순위
+3. **Op-Amp** — Aguilar Tone Hammer 모델 추가 시 사용. AGS(Aguilar Gain Stage) 회로 특성과 함께 구현

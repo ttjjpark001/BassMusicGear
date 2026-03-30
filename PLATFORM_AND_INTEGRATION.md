@@ -65,10 +65,91 @@ FORMATS  Standalone VST3 AU
 | 플러그인 포맷 | 없음 — Standalone 앱으로만 배포 가능 |
 | 실용성 | 낮음 — 오디오 생태계 미성숙, 레이턴시 문제 |
 
+### 모바일 오디오 인터페이스와 함께 사용하는 경우
+
+iRig, Apogee Jam, Focusrite iTrack 같은 모바일 오디오 인터페이스를 스마트폰/태블릿에 연결해 베이스 앰프 앱으로 쓰는 시나리오입니다.
+
+#### iOS + 모바일 오디오 인터페이스
+
+iOS는 이 시나리오에서 가장 현실적인 선택지입니다.
+
+**레이턴시 현실**
+
+| 구성 | 왕복 레이턴시 |
+|------|--------------|
+| iPhone + iRig (Lightning/USB-C) | ~5–10ms (Core Audio, 저버퍼 모드) |
+| iPad + Focusrite iTrack Solo | ~5–8ms |
+| 참고: 데스크탑 ASIO | ~3–6ms |
+
+iOS Core Audio는 모바일 플랫폼 중 가장 낮은 레이턴시를 제공하며, 실시간 연주에 실용적인 수준입니다.
+
+**현재 코드베이스에서 iOS Standalone 빌드 가능 여부**
+
+결론부터 말하면: **DSP/신호처리 코드는 그대로 사용 가능, UI와 빌드 설정은 수정 필요**
+
+| 레이어 | 현재 상태 | iOS 빌드 시 작업 필요 여부 |
+|--------|-----------|--------------------------|
+| DSP 코드 (`Source/DSP/`) | 순수 C++17, 플랫폼 무관 | **불필요** — 그대로 컴파일 됨 |
+| JUCE DSP 모듈 | 플랫폼 추상화 완비 | **불필요** |
+| `PluginProcessor` | 플랫폼 무관 | **불필요** |
+| `AudioDeviceManager` | JUCE가 iOS Core Audio 래핑 | **불필요** (API 동일) |
+| `SettingsPage` — ASIO 패널 | `showControlPanel()` iOS 미존재 | **필요** — `#if JUCE_IOS` 분기 처리 |
+| `Knob.h/.cpp` — 드래그 조작 | 마우스 이벤트 기반 | **필요** — JUCE는 터치를 마우스로 변환하므로 동작은 되나, 멀티터치 UX 개선 권장 |
+| UI 레이아웃 | 데스크탑 고정 크기 상정 | **필요** — 화면 크기 대응 |
+| CMakeLists.txt | `FORMATS Standalone VST3 AU` | **필요** — iOS 크로스 컴파일 툴체인 추가 |
+
+**iOS 빌드를 위한 최소 변경 사항**
+
+```cmake
+# CMakeLists.txt — iOS Standalone 타겟 추가 시
+juce_add_plugin(BassMusicGear
+    ...
+    FORMATS  Standalone VST3 AU  # AUv3 추가 가능
+    ...
+)
+
+# iOS 크로스 컴파일 시 cmake 호출 방법
+cmake -B build-ios \
+  -DCMAKE_SYSTEM_NAME=iOS \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 \
+  -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY="Apple Development" \
+  -GXcode
+```
+
+```cpp
+// SettingsPage.cpp — ASIO 전용 코드 분기
+#if JUCE_WINDOWS
+    // ASIO 컨트롤 패널 버튼
+    asioButton.onClick = [&]() {
+        if (auto* device = deviceManager.getCurrentAudioDevice())
+            if (auto* asio = dynamic_cast<juce::ASIOAudioIODevice*>(device))
+                asio->showControlPanel();
+    };
+#endif
+```
+
+#### Android + 모바일 오디오 인터페이스
+
+Android는 현실적으로 **권장하지 않습니다.**
+
+| 항목 | 현황 |
+|------|------|
+| 레이턴시 | USB 오디오 인터페이스 연결 시 20–50ms 수준 (기기마다 다름) |
+| JUCE 지원 | Oboe 백엔드로 Android 빌드 지원 — 기술적으로는 가능 |
+| USB 오디오 클래스 지원 | Android 5.0+ 공식 지원이나 기기별 드라이버 호환성 불안정 |
+| 오디오 인터페이스 호환 | iRig 등 iOS 전용 제품은 Android 미지원 |
+| 실용 결론 | 실시간 연주용으로는 레이턴시 문제가 해결되지 않음 |
+
 ### 결론
 
-베이스 앰프 시뮬레이터 특성상 **모바일은 우선순위가 낮습니다.**
-실시간 저레이턴시 처리와 외부 오디오 인터페이스 연결이 모바일에서 제약이 많기 때문입니다.
+| 시나리오 | 현실성 |
+|----------|--------|
+| **iOS + 모바일 인터페이스 (iRig 등)** | 실용적 — 레이턴시 허용 범위, 코드 재사용률 높음 |
+| **Android + 모바일 인터페이스** | 비권장 — 레이턴시·호환성 이슈 미해결 |
+| **데스크탑 Standalone (현재)** | 메인 타겟 — ASIO/Core Audio 저레이턴시 |
+
+**iOS Standalone 앱이 필요해지는 시점**에 작업하면 됩니다. DSP 코드를 전혀 건드릴 필요 없이 UI 레이아웃과 빌드 설정만 수정하면 되므로 추가 비용이 상대적으로 낮습니다.
+
 나중에 iOS 지원을 추가하고 싶다면 그때 별도로 작업합니다.
 
 ---

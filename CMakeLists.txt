@@ -102,6 +102,12 @@ target_sources(BassMusicGear
         Source/DSP/Effects/NoiseGate.cpp
         Source/DSP/Effects/Compressor.h
         Source/DSP/Effects/Compressor.cpp
+        Source/DSP/Effects/Overdrive.h
+        Source/DSP/Effects/Overdrive.cpp
+        Source/DSP/Effects/Octaver.h
+        Source/DSP/Effects/Octaver.cpp
+        Source/DSP/Effects/EnvelopeFilter.h
+        Source/DSP/Effects/EnvelopeFilter.cpp
         Source/DSP/Tuner.h
         Source/DSP/Tuner.cpp
         Source/DSP/ToneStack.h
@@ -122,6 +128,8 @@ target_sources(BassMusicGear
         Source/UI/CabinetSelector.cpp
         Source/UI/TunerDisplay.h
         Source/UI/TunerDisplay.cpp
+        Source/UI/EffectBlock.h
+        Source/UI/EffectBlock.cpp
         Source/Models/AmpModel.h
         Source/Models/AmpModelLibrary.h
         Source/Models/AmpModelLibrary.cpp

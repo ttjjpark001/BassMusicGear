@@ -5,6 +5,7 @@
 #include "UI/AmpPanel.h"
 #include "UI/CabinetSelector.h"
 #include "UI/TunerDisplay.h"
+#include "UI/EffectBlock.h"
 
 /**
  * @brief BassMusicGear 플러그인 에디터 (UI, Phase 2)
@@ -73,6 +74,11 @@ private:
     TunerDisplay    tunerDisplay;     // 크로매틱 튜너 (에디터 상단 상시 표시)
     AmpPanel        ampPanel;         // 5종 앰프 모델 선택 및 톤 컨트롤 패널
     CabinetSelector cabinetSelector;  // 캐비닛 IR 선택 및 Bypass 패널
+
+    // Pre-FX effect blocks
+    std::unique_ptr<EffectBlock> overdriveBlock;
+    std::unique_ptr<EffectBlock> octaverBlock;
+    std::unique_ptr<EffectBlock> envelopeFilterBlock;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginEditor)
 };

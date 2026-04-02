@@ -25,6 +25,9 @@ void SignalChain::prepare (const juce::dsp::ProcessSpec& spec)
     noiseGate.prepare (monoSpec);
     tuner.prepare (monoSpec);
     compressor.prepare (monoSpec);
+    overdrive.prepare (monoSpec);
+    octaver.prepare (monoSpec);
+    envelopeFilter.prepare (monoSpec);
     preamp.prepare (monoSpec);
     toneStack.prepare (monoSpec);
     powerAmp.prepare (monoSpec);
@@ -44,6 +47,9 @@ void SignalChain::reset()
     noiseGate.reset();
     tuner.reset();
     compressor.reset();
+    overdrive.reset();
+    octaver.reset();
+    envelopeFilter.reset();
     preamp.reset();
     toneStack.reset();
     powerAmp.reset();
@@ -66,7 +72,7 @@ void SignalChain::reset()
  */
 int SignalChain::getTotalLatencyInSamples() const
 {
-    return preamp.getLatencyInSamples() + cabinet.getLatencyInSamples();
+    return overdrive.getLatencyInSamples() + preamp.getLatencyInSamples() + cabinet.getLatencyInSamples();
 }
 
 /**
@@ -197,6 +203,30 @@ void SignalChain::connectParameters (juce::AudioProcessorValueTreeState& apvts)
         apvts.getRawParameterValue ("comp_release"),
         apvts.getRawParameterValue ("comp_makeup"),
         apvts.getRawParameterValue ("comp_dry_blend"));
+
+    // --- Overdrive 파라미터 ---
+    overdrive.setParameterPointers (
+        apvts.getRawParameterValue ("od_enabled"),
+        apvts.getRawParameterValue ("od_type"),
+        apvts.getRawParameterValue ("od_drive"),
+        apvts.getRawParameterValue ("od_tone"),
+        apvts.getRawParameterValue ("od_dry_blend"));
+
+    // --- Octaver 파라미터 ---
+    octaver.setParameterPointers (
+        apvts.getRawParameterValue ("oct_enabled"),
+        apvts.getRawParameterValue ("oct_sub_level"),
+        apvts.getRawParameterValue ("oct_up_level"),
+        apvts.getRawParameterValue ("oct_dry_level"));
+
+    // --- EnvelopeFilter 파라미터 ---
+    envelopeFilter.setParameterPointers (
+        apvts.getRawParameterValue ("ef_enabled"),
+        apvts.getRawParameterValue ("ef_sensitivity"),
+        apvts.getRawParameterValue ("ef_freq_min"),
+        apvts.getRawParameterValue ("ef_freq_max"),
+        apvts.getRawParameterValue ("ef_resonance"),
+        apvts.getRawParameterValue ("ef_direction"));
 }
 
 /**
@@ -344,12 +374,15 @@ void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTre
 void SignalChain::process (juce::AudioBuffer<float>& buffer)
 {
     // --- 신호 체인 순서대로 처리 ---
-    noiseGate.process (buffer);      // 히스테리시스 게이트로 노이즈/허밍 제거
-    tuner.process (buffer);          // YIN 피치 감지 (선택적 뮤트)
-    compressor.process (buffer);     // VCA 컴프레서 (패러렬 드라이 블렌드)
+    noiseGate.process (buffer);          // 히스테리시스 게이트로 노이즈/허밍 제거
+    tuner.process (buffer);              // YIN 피치 감지 (선택적 뮤트)
+    compressor.process (buffer);         // VCA 컴프레서 (패러렬 드라이 블렌드)
     // [BiAmp placeholder — Phase 6: Linkwitz-Riley 크로스오버 구현 예정]
-    preamp.process (buffer);         // 입력 게인 스테이징 + 웨이브쉐이핑 (4배 OS)
-    toneStack.process (buffer);      // 모델별 톤 컨트롤 (TMB/James/Baxandall/etc)
-    powerAmp.process (buffer);       // 포화 + Presence 필터 + Sag(튜브 모델만)
-    cabinet.process (buffer);        // 콘볼루션으로 캐비닛 IR 적용
+    overdrive.process (buffer);          // Pre-FX: Tube/JFET/Fuzz 오버드라이브
+    octaver.process (buffer);            // Pre-FX: YIN 서브옥타브/옥타브업
+    envelopeFilter.process (buffer);     // Pre-FX: SVF 엔벨로프 필터
+    preamp.process (buffer);             // 입력 게인 스테이징 + 웨이브쉐이핑 (4배 OS)
+    toneStack.process (buffer);          // 모델별 톤 컨트롤 (TMB/James/Baxandall/etc)
+    powerAmp.process (buffer);           // 포화 + Presence 필터 + Sag(튜브 모델만)
+    cabinet.process (buffer);            // 콘볼루션으로 캐비닛 IR 적용
 }

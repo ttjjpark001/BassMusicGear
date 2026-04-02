@@ -5,6 +5,9 @@
 #include "Effects/NoiseGate.h"
 #include "Tuner.h"
 #include "Effects/Compressor.h"
+#include "Effects/Overdrive.h"
+#include "Effects/Octaver.h"
+#include "Effects/EnvelopeFilter.h"
 #include "Preamp.h"
 #include "ToneStack.h"
 #include "PowerAmp.h"
@@ -154,11 +157,14 @@ private:
     }
 
     // --- 신호 체인 블록 ---
-    NoiseGate  noiseGate;    // 히스테리시스 게이트: 노이즈 제거
-    Tuner      tuner;        // YIN 피치 트래킹 (41Hz~330Hz)
-    Compressor compressor;   // VCA 컴프레서 (패러렐 드라이 블렌드)
+    NoiseGate      noiseGate;       // 히스테리시스 게이트: 노이즈 제거
+    Tuner          tuner;           // YIN 피치 트래킹 (41Hz~330Hz)
+    Compressor     compressor;      // VCA 컴프레서 (패러렐 드라이 블렌드)
     // [BiAmp placeholder — Phase 6에서 구현]
-    Preamp     preamp;       // 입력 이득 + 웨이브쉐이핑 (4x 오버샘플링)
+    Overdrive      overdrive;       // Pre-FX: Tube/JFET/Fuzz + Dry Blend
+    Octaver        octaver;         // Pre-FX: YIN 서브옥타브/옥타브업
+    EnvelopeFilter envelopeFilter;  // Pre-FX: SVF + 엔벨로프 팔로워
+    Preamp         preamp;          // 입력 이득 + 웨이브쉐이핑 (4x 오버샘플링)
     ToneStack  toneStack;    // 모델별 톤 컨트롤 EQ
     PowerAmp   powerAmp;     // 포화 + Presence 필터 + Sag 엔벨로프
     Cabinet    cabinet;      // 콘볼루션 캐비닛 IR

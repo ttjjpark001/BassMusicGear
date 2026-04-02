@@ -14,6 +14,7 @@ target_sources(BassMusicGear_Tests
         "${CMAKE_SOURCE_DIR}/Source/DSP/ToneStack.cpp"
         "${CMAKE_SOURCE_DIR}/Source/DSP/Preamp.cpp"
         "${CMAKE_SOURCE_DIR}/Source/DSP/Effects/Compressor.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/DSP/Effects/Overdrive.cpp"
         "${CMAKE_SOURCE_DIR}/Source/Models/AmpModelLibrary.cpp"
 )
 

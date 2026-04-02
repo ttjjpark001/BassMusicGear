@@ -271,6 +271,74 @@ PluginProcessor::createParameterLayout()
         juce::ParameterID { "comp_dry_blend", 1 }, "Comp Dry Blend",
         juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
 
+    //--------------------------------------------------------------------------
+    // Overdrive (Pre-FX)
+    //--------------------------------------------------------------------------
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "od_enabled", 1 }, "Overdrive", false));
+
+    params.push_back (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { "od_type", 1 }, "OD Type",
+        juce::StringArray { "Tube", "JFET", "Fuzz" }, 0));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "od_drive", 1 }, "OD Drive",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "od_tone", 1 }, "OD Tone",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "od_dry_blend", 1 }, "OD Dry Blend",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
+
+    //--------------------------------------------------------------------------
+    // Octaver (Pre-FX)
+    //--------------------------------------------------------------------------
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "oct_enabled", 1 }, "Octaver", false));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "oct_sub_level", 1 }, "Sub Level",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "oct_up_level", 1 }, "Oct-Up Level",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "oct_dry_level", 1 }, "Oct Dry Level",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 1.0f));
+
+    //--------------------------------------------------------------------------
+    // Envelope Filter (Pre-FX)
+    //--------------------------------------------------------------------------
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "ef_enabled", 1 }, "Envelope Filter", false));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "ef_sensitivity", 1 }, "EF Sensitivity",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "ef_freq_min", 1 }, "EF Freq Min",
+        juce::NormalisableRange<float> (100.0f, 500.0f, 1.0f), 200.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("Hz")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "ef_freq_max", 1 }, "EF Freq Max",
+        juce::NormalisableRange<float> (1000.0f, 8000.0f, 1.0f), 4000.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("Hz")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "ef_resonance", 1 }, "EF Resonance",
+        juce::NormalisableRange<float> (0.5f, 10.0f, 0.1f), 3.0f));
+
+    params.push_back (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { "ef_direction", 1 }, "EF Direction",
+        juce::StringArray { "Up", "Down" }, 0));
+
     return { params.begin(), params.end() };
 }
 

@@ -19,7 +19,9 @@
  * @brief 완전한 베이스 신호 처리 체인 조립 및 관리
  *
  * **신호 체인 전체 순서**:
- * 입력 → [NoiseGate] → [Tuner(YIN)] → [Compressor] → [BiAmp placeholder] → [Preamp(4xOS)] → [ToneStack(모델별)] → [PowerAmp(Drive/Presence/Sag)] → [Cabinet(IR)] → 출력
+ * 입력 → [NoiseGate] → [Tuner(YIN)] → [Compressor] → [BiAmp placeholder]
+ *     → [Overdrive(Tube/JFET/Fuzz)] → [Octaver(YIN)] → [EnvelopeFilter(SVF)]
+ *     → [Preamp(4xOS)] → [ToneStack(모델별)] → [PowerAmp(Drive/Presence/Sag)] → [Cabinet(IR)] → 출력
  *
  * **각 블록의 역할**:
  * 1. **NoiseGate**: 허밍 및 배경 노이즈 제거 (히스테리시스 게이트)
@@ -51,7 +53,7 @@ public:
     /**
      * @brief 신호 체인 전체를 DSP 초기화한다.
      *
-     * 모든 블록(Gate/Preamp/ToneStack/PowerAmp/Cabinet)을 순서대로 prepare한다.
+     * 모든 블록(Gate/Tuner/Compressor/Overdrive/Octaver/EnvelopeFilter/Preamp/ToneStack/PowerAmp/Cabinet)을 순서대로 prepare한다.
      * 오버샘플링, 필터, 컨볼루션 등의 버퍼를 할당한다.
      *
      * @param spec  오디오 스펙 (sampleRate, samplesPerBlock)
@@ -62,7 +64,8 @@ public:
     /**
      * @brief 오디오 버퍼를 신호 체인 전체에 통과시킨다.
      *
-     * Gate → Tuner → Compressor → Preamp → ToneStack → PowerAmp → Cabinet 순서로 처리.
+     * Gate → Tuner → Compressor → Overdrive → Octaver → EnvelopeFilter
+     * → Preamp → ToneStack → PowerAmp → Cabinet 순서로 처리.
      * 각 블록은 In-place로 버퍼를 수정한다.
      *
      * @param buffer  모노 오디오 버퍼
@@ -80,7 +83,7 @@ public:
     /**
      * @brief 전체 신호 체인의 지연을 샘플 단위로 반환한다.
      *
-     * Preamp 오버샘플링 지연 + Cabinet 컨볼루션 지연 합산.
+     * Overdrive 오버샘플링 지연 + Preamp 오버샘플링 지연 + Cabinet 컨볼루션 지연 합산.
      * PluginProcessor가 이 값을 DAW에 보고 (PDC - Plugin Delay Compensation).
      *
      * @return  총 지연 샘플 수
@@ -156,18 +159,18 @@ private:
         return 0; // fallback
     }
 
-    // --- 신호 체인 블록 ---
-    NoiseGate      noiseGate;       // 히스테리시스 게이트: 노이즈 제거
-    Tuner          tuner;           // YIN 피치 트래킹 (41Hz~330Hz)
-    Compressor     compressor;      // VCA 컴프레서 (패러렐 드라이 블렌드)
-    // [BiAmp placeholder — Phase 6에서 구현]
-    Overdrive      overdrive;       // Pre-FX: Tube/JFET/Fuzz + Dry Blend
-    Octaver        octaver;         // Pre-FX: YIN 서브옥타브/옥타브업
-    EnvelopeFilter envelopeFilter;  // Pre-FX: SVF + 엔벨로프 팔로워
-    Preamp         preamp;          // 입력 이득 + 웨이브쉐이핑 (4x 오버샘플링)
-    ToneStack  toneStack;    // 모델별 톤 컨트롤 EQ
-    PowerAmp   powerAmp;     // 포화 + Presence 필터 + Sag 엔벨로프
-    Cabinet    cabinet;      // 콘볼루션 캐비닛 IR
+    // --- 신호 체인 DSP 모듈 ---
+    NoiseGate      noiseGate;       // 히스테리시스 게이트: 허밍 및 배경 노이즈 제거
+    Tuner          tuner;           // YIN 피치 감지 (41Hz~330Hz, 크로매틱 표시용)
+    Compressor     compressor;      // VCA 동적 범위 압축 (패러렐 드라이 블렌드)
+    // [BiAmp placeholder — Phase 6: Linkwitz-Riley 크로스오버 구현 예정]
+    Overdrive      overdrive;       // Pre-FX: Tube/JFET/Fuzz 웨이브쉐이핑 (4x/8x OS) + Dry Blend
+    Octaver        octaver;         // Pre-FX: YIN 피치 추적 + F0/2, F0*2 사인파 합성
+    EnvelopeFilter envelopeFilter;  // Pre-FX: SVF 필터 + 엔벨로프 팔로워 변조
+    Preamp         preamp;          // 입력 이득 스테이징 + 타입별 웨이브쉐이핑 (4배 OS)
+    ToneStack      toneStack;       // 모델별 톤 컨트롤 (TMB, Baxandall, James 등)
+    PowerAmp       powerAmp;        // 포화 + Presence 피킹 필터 + Sag 엔벨로프(튜브만)
+    Cabinet        cabinet;         // 컨볼루션 캐비닛 IR 적용
 
     AmpModelId currentModelId = AmpModelId::TweedBass;  // 현재 선택된 앰프 모델
 

@@ -6,7 +6,7 @@
 /**
  * @brief BassMusicGear 플러그인 오디오 프로세서
  *
- * **신호 체인**: NoiseGate → Tuner(YIN) → Compressor(VCA) → Preamp(4xOS) → ToneStack → PowerAmp(Drive/Presence/Sag) → Cabinet(IR)
+ * **신호 체인**: NoiseGate → Tuner(YIN) → Compressor(VCA) → Overdrive(Tube/JFET/Fuzz) → Octaver(YIN) → EnvelopeFilter(SVF) → Preamp(4xOS) → ToneStack → PowerAmp(Drive/Presence/Sag) → Cabinet(IR)
  *
  * **5종 앰프 모델**: American Vintage / Tweed Bass / British Stack / Modern Micro / Italian Clean
  *
@@ -67,7 +67,8 @@ public:
      * @param midiMessages  MIDI 메시지 (미사용)
      * @note [오디오 스레드] 절대 금지: malloc/new, 파일 I/O, 뮤텍스, 시스템 콜
      *       모든 DSP 블록의 process() 메서드를 순서대로 호출하여
-     *       신호를 게이트 → 프리앰프 → 톤스택 → 파워앰프 → 캐비닛으로 통과시킨다.
+     *       신호를 게이트 → 컴프레서 → 오버드라이브 → 옥타버 → 엔벨로프 필터
+     *       → 프리앰프 → 톤스택 → 파워앰프 → 캐비닛으로 통과시킨다.
      */
     void processBlock (juce::AudioBuffer<float>& buffer,
                        juce::MidiBuffer& midiMessages) override;

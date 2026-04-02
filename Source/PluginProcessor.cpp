@@ -272,69 +272,84 @@ PluginProcessor::createParameterLayout()
         juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
 
     //--------------------------------------------------------------------------
-    // Overdrive (Pre-FX)
+    // Overdrive (Pre-FX): Tube/JFET/Fuzz 웨이브쉐이핑
     //--------------------------------------------------------------------------
+    // ON/OFF 토글
     params.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { "od_enabled", 1 }, "Overdrive", false));
 
+    // 오버드라이브 타입 선택 (Tube=부드러운 포화, JFET=클린+그릿, Fuzz=극도의 클리핑)
     params.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { "od_type", 1 }, "OD Type",
         juce::StringArray { "Tube", "JFET", "Fuzz" }, 0));
 
+    // 드라이브 양 (0~1, 선형 → 1~20배 게인에 매핑)
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "od_drive", 1 }, "OD Drive",
         juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
 
+    // 톤 필터 로우패스 컷오프 (0=500Hz 어두움, 1=12kHz 밝음)
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "od_tone", 1 }, "OD Tone",
         juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
 
+    // 드라이 블렌드 (0=모두 웨트, 1=모두 드라이)
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "od_dry_blend", 1 }, "OD Dry Blend",
         juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
 
     //--------------------------------------------------------------------------
-    // Octaver (Pre-FX)
+    // Octaver (Pre-FX): YIN 피치 추적 + 서브/옥타브 사인파 합성
     //--------------------------------------------------------------------------
+    // ON/OFF 토글
     params.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { "oct_enabled", 1 }, "Octaver", false));
 
+    // 서브옥타브(F0/2) 레벨 (0~1)
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "oct_sub_level", 1 }, "Sub Level",
         juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
 
+    // 옥타브업(F0*2) 레벨 (0~1) [P1: 음질 개선 예정]
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "oct_up_level", 1 }, "Oct-Up Level",
         juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
 
+    // 원본 신호(드라이) 레벨 (0~1)
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "oct_dry_level", 1 }, "Oct Dry Level",
         juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 1.0f));
 
     //--------------------------------------------------------------------------
-    // Envelope Filter (Pre-FX)
+    // Envelope Filter (Pre-FX): SVF + 엔벨로프 팔로워 변조
     //--------------------------------------------------------------------------
+    // ON/OFF 토글
     params.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { "ef_enabled", 1 }, "Envelope Filter", false));
 
+    // 엔벨로프 감도 (0~1, 필터 스윕 범위 조절)
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "ef_sensitivity", 1 }, "EF Sensitivity",
         juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
 
+    // 최소 컷오프 주파수 (Hz)
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "ef_freq_min", 1 }, "EF Freq Min",
         juce::NormalisableRange<float> (100.0f, 500.0f, 1.0f), 200.0f,
         juce::AudioParameterFloatAttributes().withLabel ("Hz")));
 
+    // 최대 컷오프 주파수 (Hz)
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "ef_freq_max", 1 }, "EF Freq Max",
         juce::NormalisableRange<float> (1000.0f, 8000.0f, 1.0f), 4000.0f,
         juce::AudioParameterFloatAttributes().withLabel ("Hz")));
 
+    // 레조넌스/Q (0.5~10, 밴드폭 조절)
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "ef_resonance", 1 }, "EF Resonance",
         juce::NormalisableRange<float> (0.5f, 10.0f, 0.1f), 3.0f));
 
+    // 방향 선택: Up(엔벨로프 증가 시 컷오프 상승) vs Down(하강)
     params.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { "ef_direction", 1 }, "EF Direction",
         juce::StringArray { "Up", "Down" }, 0));

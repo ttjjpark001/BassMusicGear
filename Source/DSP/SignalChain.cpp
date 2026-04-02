@@ -4,7 +4,8 @@
 /**
  * @brief 신호 체인 전체를 DSP 초기화한다.
  *
- * 모든 블록(Gate/Tuner/Compressor/Preamp/ToneStack/PowerAmp/Cabinet)을
+ * 모든 블록(Gate/Tuner/Compressor/Overdrive/Octaver/EnvelopeFilter/
+ * Preamp/ToneStack/PowerAmp/Cabinet)을
  * 순서대로 prepare하여 버퍼 할당, 오버샘플링 초기화, 필터 계수 생성 등을 수행.
  *
  * **오버샘플링 지연**:
@@ -21,7 +22,7 @@ void SignalChain::prepare (const juce::dsp::ProcessSpec& spec)
     juce::dsp::ProcessSpec monoSpec = spec;
     monoSpec.numChannels = 1;
 
-    // --- 신호 체인 순서: Gate → Tuner → Compressor → Preamp → ToneStack → PowerAmp → Cabinet ---
+    // --- 신호 체인 순서: Gate → Tuner → Compressor → Overdrive → Octaver → EnvelopeFilter → Preamp → ToneStack → PowerAmp → Cabinet ---
     noiseGate.prepare (monoSpec);
     tuner.prepare (monoSpec);
     compressor.prepare (monoSpec);
@@ -38,7 +39,7 @@ void SignalChain::prepare (const juce::dsp::ProcessSpec& spec)
  * @brief 신호 체인의 모든 필터/버퍼를 클리어한다.
  *
  * 재생 중지, 모델 전환, 또는 아티팩트 방지 시 호출.
- * 각 블록의 내부 상태(필터 메모리, 에벨로프 추적 상태 등)를 초기화.
+ * 각 블록의 내부 상태(필터 메모리, 엔벨로프 추적 상태 등)를 초기화.
  *
  * @note [오디오 스레드] releaseResources() 또는 모델 전환 시 호출.
  */
@@ -60,10 +61,11 @@ void SignalChain::reset()
  * @brief 신호 체인 전체의 누적 지연(샘플 단위)을 반환한다.
  *
  * **지연 구성**:
+ * - **Overdrive** (4x/8x 오버샘플링): 8x worst-case 지연으로 일관 보고
  * - **Preamp** (4배 오버샘플링): ~250 samples @ 44.1kHz
  *   - 오버샘플링 필터 및 다운샘플링 필터로 인한 지연
- * - **Cabinet** (컨볼루션 IR): ~8000~10000 samples (모델에 따라 ~200ms)
- *   - 실제 스피커/캐비닛 임펄스 응답 길이
+ * - **Cabinet** (컨볼루션 IR): 파티션 크기에 의한 처리 지연
+ *   - juce::dsp::Convolution 내부 파티션 구조에 따라 결정
  *
  * 합산된 값은 PluginProcessor가 DAW에 보고하여,
  * DAW가 다른 트랙과의 시간 정렬(PDC - Plugin Delay Compensation)에 사용.
@@ -297,7 +299,7 @@ void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTre
     const auto& model = AmpModelLibrary::getModel (currentModelId);
 
     // **Italian Clean (Markbass 4-Band)**: VPF (Vintage Presence Filter) / VLE (Vintage Loudspeaker Emulation)
-    // VPF: 3개 필터의 조합으로 저음-중음 특성 조절
+    // VPF: 3개 필터 합산 (35Hz 부스트 + 380Hz 노치 + 10kHz 부스트)
     // VLE: 고주파 롤오프로 오래된 스피커 감성 추가
     if (model.toneStack == ToneStackType::MarkbassFourBand)
     {
@@ -330,7 +332,7 @@ void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTre
         }
     }
 
-    // **American Vintage (Baxandall)**: Mid Position (Mid 주파수 선택: 250Hz / 500Hz)
+    // **American Vintage (Baxandall)**: Mid Position (5단 스위치: 250/500/800/1.5k/3kHz)
     // Mid Position이 변경되면 Baxandall 톤스택의 Mid 필터 중심 주파수 전환
     if (model.toneStack == ToneStackType::Baxandall)
     {
@@ -357,6 +359,9 @@ void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTre
  *     → [Tuner (YIN 피치 감지, Mute 토글)]
  *     → [Compressor (VCA 압축)]
  *     → [BiAmp placeholder] ← Phase 6에서 구현
+ *     → [Overdrive (Tube/JFET/Fuzz + Dry Blend)]
+ *     → [Octaver (YIN 서브옥타브/옥타브업)]
+ *     → [EnvelopeFilter (SVF + 엔벨로프 팔로워)]
  *     → [Preamp (입력 게인 + 웨이브쉐이핑 + 4배 OS)]
  *     → [ToneStack (모델별 톤 컨트롤)]
  *     → [PowerAmp (포화 + Presence 필터 + Sag)]
@@ -373,16 +378,17 @@ void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTre
  */
 void SignalChain::process (juce::AudioBuffer<float>& buffer)
 {
-    // --- 신호 체인 순서대로 처리 ---
-    noiseGate.process (buffer);          // 히스테리시스 게이트로 노이즈/허밍 제거
-    tuner.process (buffer);              // YIN 피치 감지 (선택적 뮤트)
-    compressor.process (buffer);         // VCA 컴프레서 (패러렬 드라이 블렌드)
+    // --- 신호 체인 순서대로 처리 (입력 → 출력) ---
+    // 각 블록은 In-place로 버퍼를 수정하므로, 이전 블록의 출력이 다음 블록의 입력
+    noiseGate.process (buffer);          // 1. 히스테리시스 게이트: 허밍(60Hz) 및 배경 노이즈 제거
+    tuner.process (buffer);              // 2. YIN 피치 감지: Tuner UI 표시용 (선택적 뮤트)
+    compressor.process (buffer);         // 3. VCA 컴프레서 (패러렬 드라이 블렌드)
     // [BiAmp placeholder — Phase 6: Linkwitz-Riley 크로스오버 구현 예정]
-    overdrive.process (buffer);          // Pre-FX: Tube/JFET/Fuzz 오버드라이브
-    octaver.process (buffer);            // Pre-FX: YIN 서브옥타브/옥타브업
-    envelopeFilter.process (buffer);     // Pre-FX: SVF 엔벨로프 필터
-    preamp.process (buffer);             // 입력 게인 스테이징 + 웨이브쉐이핑 (4배 OS)
-    toneStack.process (buffer);          // 모델별 톤 컨트롤 (TMB/James/Baxandall/etc)
-    powerAmp.process (buffer);           // 포화 + Presence 필터 + Sag(튜브 모델만)
-    cabinet.process (buffer);            // 콘볼루션으로 캐비닛 IR 적용
+    overdrive.process (buffer);          // 4. Pre-FX: Tube/JFET/Fuzz 웨이브쉐이핑 (4x/8x OS)
+    octaver.process (buffer);            // 5. Pre-FX: YIN 피치 추적 + 서브/옥타브 사인파 합성
+    envelopeFilter.process (buffer);     // 6. Pre-FX: SVF 필터 + 엔벨로프 팔로워 변조 (피킹 반응)
+    preamp.process (buffer);             // 7. 입력 이득 스테이징 + 타입별 웨이브쉐이핑 (4배 OS)
+    toneStack.process (buffer);          // 8. 모델별 톤 컨트롤 (Bass/Mid/Treble 이퀄라이저)
+    powerAmp.process (buffer);           // 9. 파워 포화 + Presence 피킹 필터 + Sag 압축(튜브만)
+    cabinet.process (buffer);            // 10. 컨볼루션 캐비닛 IR 적용 (스피커 시뮬레이션)
 }

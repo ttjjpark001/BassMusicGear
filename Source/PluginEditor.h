@@ -69,6 +69,9 @@ public:
     void resized() override;
 
 private:
+    /** Pre-FX 블록 상태에 따라 필요한 창 높이를 계산한다. */
+    int calculateNeededHeight() const;
+
     PluginProcessor& processorRef;  // PluginProcessor 참조 (APVTS, SignalChain 접근)
 
     TunerDisplay    tunerDisplay;     // 크로매틱 튜너 (에디터 상단 상시 표시)

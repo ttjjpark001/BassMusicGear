@@ -18,24 +18,24 @@ PluginEditor::PluginEditor (PluginProcessor& p)
         "Overdrive", p.apvts, "od_enabled",
         juce::StringArray { "od_drive", "od_tone", "od_dry_blend" },
         juce::StringArray { "Drive", "Tone", "Blend" });
-    overdriveBlock->onExpandChange = [this] { resized(); };
+    overdriveBlock->onExpandChange = [this] { setSize (getWidth(), calculateNeededHeight()); };
     addAndMakeVisible (*overdriveBlock);
 
     octaverBlock = std::make_unique<EffectBlock> (
         "Octaver", p.apvts, "oct_enabled",
         juce::StringArray { "oct_sub_level", "oct_up_level", "oct_dry_level" },
         juce::StringArray { "Sub", "Oct-Up", "Dry" });
-    octaverBlock->onExpandChange = [this] { resized(); };
+    octaverBlock->onExpandChange = [this] { setSize (getWidth(), calculateNeededHeight()); };
     addAndMakeVisible (*octaverBlock);
 
     envelopeFilterBlock = std::make_unique<EffectBlock> (
         "Env Filter", p.apvts, "ef_enabled",
         juce::StringArray { "ef_sensitivity", "ef_resonance" },
         juce::StringArray { "Sens", "Reso" });
-    envelopeFilterBlock->onExpandChange = [this] { resized(); };
+    envelopeFilterBlock->onExpandChange = [this] { setSize (getWidth(), calculateNeededHeight()); };
     addAndMakeVisible (*envelopeFilterBlock);
 
-    setSize (800, 700);
+    setSize (800, calculateNeededHeight());
 }
 
 PluginEditor::~PluginEditor() = default;
@@ -55,6 +55,23 @@ void PluginEditor::paint (juce::Graphics& g)
     g.drawFittedText ("Phase 4 -- Pre-FX",
                       0, getHeight() - 20, getWidth(), 20,
                       juce::Justification::centred, 1);
+}
+
+int PluginEditor::calculateNeededHeight() const
+{
+    auto fxH = [](const EffectBlock& b) {
+        return b.getExpanded() ? EffectBlock::expandedHeight : EffectBlock::collapsedHeight;
+    };
+
+    return 35                              // 타이틀
+         + 22                             // 하단 Phase 표시
+         + 42 + 4                         // TunerDisplay + 갭
+         + fxH (*overdriveBlock)     + 2  // Pre-FX 1
+         + fxH (*octaverBlock)       + 2  // Pre-FX 2
+         + fxH (*envelopeFilterBlock) + 6 // Pre-FX 3 + 갭
+         + 290 + 4                        // AmpPanel + 갭
+         + 95                             // CabinetSelector
+         + 10;                            // 상하 패딩 (reduced 5)
 }
 
 void PluginEditor::resized()

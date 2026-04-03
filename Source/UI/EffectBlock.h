@@ -23,7 +23,7 @@ class EffectBlock : public juce::Component
 {
 public:
     static constexpr int collapsedHeight = 36;
-    static constexpr int expandedHeight  = 96;
+    static constexpr int expandedHeight  = 130;
 
     /**
      * @brief 이펙터 블록 UI 컴포넌트 생성

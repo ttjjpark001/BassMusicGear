@@ -79,8 +79,8 @@ void PluginEditor::resized()
     envelopeFilterBlock->setBounds (area.removeFromTop (preFxHeight (*envelopeFilterBlock)));
     area.removeFromTop (6);
 
-    // 앰프 패널
-    ampPanel.setBounds (area.removeFromTop (260));
+    // 앰프 패널 (2행 노브까지 포함: row2Y + knobH = 175 + 95 = 270 + 여유 20)
+    ampPanel.setBounds (area.removeFromTop (290));
     area.removeFromTop (4);
 
     // 캐비닛 선택 (IR)

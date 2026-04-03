@@ -8,10 +8,12 @@ EffectBlock::EffectBlock (const juce::String& name,
     : effectName (name),
       knobLabels (paramLabels)
 {
-    // --- 접기/펼치기 버튼 (▶) ---
-    expandButton.setButtonText (juce::CharPointer_UTF8 ("\xe2\x96\xb6"));  // ▶
-    expandButton.setColour (juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
-    expandButton.setColour (juce::TextButton::textColourOffId, juce::Colour (0xffaaaacc));
+    // --- 접기/펼치기 버튼 (> / v) ---
+    expandButton.setButtonText (">");
+    expandButton.setColour (juce::TextButton::buttonColourId,    juce::Colour (0xff3a3a5a));
+    expandButton.setColour (juce::TextButton::buttonOnColourId,  juce::Colour (0xff5a5a7a));
+    expandButton.setColour (juce::TextButton::textColourOffId,   juce::Colour (0xffffffff));
+    expandButton.setColour (juce::TextButton::textColourOnId,    juce::Colour (0xffff8800));
     expandButton.onClick = [this]
     {
         setExpanded (!expanded);
@@ -47,9 +49,7 @@ void EffectBlock::setExpanded (bool shouldBeExpanded)
     expanded = shouldBeExpanded;
 
     // 버튼 텍스트를 상태에 맞게 변경
-    expandButton.setButtonText (expanded
-        ? juce::CharPointer_UTF8 ("\xe2\x96\xbc")   // ▼ (펼침)
-        : juce::CharPointer_UTF8 ("\xe2\x96\xb6"));  // ▶ (접힘)
+    expandButton.setButtonText (expanded ? "v" : ">");
 
     // 노브 가시성 토글
     for (auto* knob : knobs)

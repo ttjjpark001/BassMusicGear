@@ -29,18 +29,18 @@
 - [ ] Overdrive 블록 ON/OFF 토글 → SignalChainView에서 반투명/불투명 전환 확인 (수동 확인 필요)
 - [ ] Overdrive Tube 타입 선택 → 베이스 입력 시 왜곡된 소리 확인
   - 기대: 소프트 클리핑으로 인한 워밍한 오버드라이브 톤 (수동 확인 필요)
-- [ ] Overdrive DryBlend 노브 0% → 완전 왜곡(wet-only), 원음 특성 사라짐 (수동 확인 필요)
-- [ ] Overdrive DryBlend 노브 100% → 클린 원음, 오버드라이브 효과 없음 (수동 확인 필요)
+- [x] Overdrive DryBlend 노브 0% → 완전 왜곡(wet-only), 원음 특성 사라짐 (확인 완료)
+- [x] Overdrive DryBlend 노브 100% → 클린 원음, 오버드라이브 효과 없음 (확인 완료)
 - [ ] Overdrive DryBlend 50% → 원음과 왜곡음의 혼합 확인 (수동 확인 필요)
-- [ ] Overdrive JFET 타입 전환 → Tube와 다른 음색 (그릿+클린 혼합) (수동 확인 필요)
-- [ ] Overdrive Fuzz 타입 전환 → 매우 강한 하드 클리핑, 사각파에 가까운 음색 (수동 확인 필요)
+- [ ] ⚠️ Overdrive JFET 타입 전환 → Tube와 다른 음색 (그릿+클린 혼합) (Phase 8 이후 확인 필요 — od_type ComboBox UI 미구현)
+- [ ] ⚠️ Overdrive Fuzz 타입 전환 → 매우 강한 하드 클리핑, 사각파에 가까운 음색 (Phase 8 이후 확인 필요 — od_type ComboBox UI 미구현)
 - [ ] Overdrive Drive 노브 최대 → 강한 포화, 출력 레벨 안정적 (클리핑 없음) (수동 확인 필요)
 - [ ] Overdrive Tone 노브 최소 → 고역 감쇠, 어두운 음색 (수동 확인 필요)
 - [ ] Overdrive Tone 노브 최대 → 고역 통과, 밝은 음색 (수동 확인 필요)
 
 ### Octaver 이펙터
 
-- [ ] Octaver 블록 ON → 베이스 E2(82Hz) 연주 시 41Hz 서브옥타브 소리 확인 (수동 확인 필요)
+- [x] Octaver 블록 ON → 베이스 E2(82Hz) 연주 시 41Hz 서브옥타브 소리 확인 (확인 완료)
 - [ ] Octaver Sub Level 노브 최대, Dry Level 0 → 서브옥타브만 출력 확인 (수동 확인 필요)
 - [ ] Octaver Oct-Up Level 최대 → 164Hz 옥타브업 소리 확인 (수동 확인 필요)
 - [ ] Octaver Dry Level 1.0, Sub/Up Level 0 → 원음만 출력, 합성음 없음 (수동 확인 필요)
@@ -48,18 +48,18 @@
 
 ### EnvelopeFilter 이펙터
 
-- [ ] EnvelopeFilter 블록 ON → 강하게 연주 시 와우와우 스윕 필터 확인 (수동 확인 필요)
+- [x] EnvelopeFilter 블록 ON → 강하게 연주 시 와우와우 스윕 필터 확인 (확인 완료)
   - 기대: 어택 시 컷오프 주파수가 상승하며 밝아짐 (Up Direction)
 - [ ] EnvelopeFilter Sensitivity 최대 → 약한 연주에도 필터 스윕 발생 (수동 확인 필요)
 - [ ] EnvelopeFilter Sensitivity 최소 → 강한 연주에서만 필터 스윕 발생 (수동 확인 필요)
-- [ ] EnvelopeFilter Direction Down → 어택 시 컷오프 하강, 어두워지는 방향 확인 (수동 확인 필요)
+- [ ] ⚠️ EnvelopeFilter Direction Down → 어택 시 컷오프 하강, 어두워지는 방향 확인 (Phase 5 이후 확인 필요 — ef_direction ComboBox UI 미구현)
 - [ ] EnvelopeFilter Resonance 최대(10) → 날카로운 봉우리 필터 (추가 공명 확인) (수동 확인 필요)
-- [ ] EnvelopeFilter FreqMin/FreqMax 범위 조절 → 스윕 범위 변화 확인 (수동 확인 필요)
+- [ ] ⚠️ EnvelopeFilter FreqMin/FreqMax 범위 조절 → 스윕 범위 변화 확인 (Phase 5 이후 확인 필요 — ef_freq_min/ef_freq_max 노브 UI 미구현)
 
 ### [Phase 3 이월] 컴프레서 파라미터 노브 리셋
 
-- [ ] Compressor 노브 우클릭 → 컨텍스트 메뉴 표시 (수동 확인 필요)
-- [ ] 컨텍스트 메뉴에서 "기본값으로 리셋" 선택 → 파라미터가 기본값으로 복귀 (수동 확인 필요)
+- [ ] ⚠️ Compressor 노브 우클릭 → 컨텍스트 메뉴 표시 (Phase 8 이후 확인 필요 — Compressor EffectBlock UI 미구현)
+- [ ] ⚠️ 컨텍스트 메뉴에서 "기본값으로 리셋" 선택 → 파라미터가 기본값으로 복귀 (Phase 8 이후 확인 필요 — Compressor EffectBlock UI 미구현)
   - Threshold: -20dBFS, Ratio: 4.0, Attack: 10ms, Release: 100ms, DryBlend: 0%
 
 ### 신호 체인 전체 흐름

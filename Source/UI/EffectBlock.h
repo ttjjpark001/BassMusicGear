@@ -7,13 +7,13 @@
 /**
  * @brief 접기/펼치기 가능한 이펙터 블록 범용 UI 컴포넌트 (Pre-FX/Post-FX 공용)
  *
- * ON/OFF 토글 + 최대 6개 파라미터 노브를 수평 배치하는 범용 컴포넌트.
+ * ON/OFF 토글 + 임의 개수의 파라미터 노브를 수평 배치하는 범용 컴포넌트.
  * 접힌 상태(collapsed)에서는 헤더만 표시하고,
  * 펼친 상태(expanded)에서는 노브 전체를 표시한다.
  *
  * **높이**:
  * - 접힌 상태: collapsedHeight (36px)
- * - 펼친 상태: expandedHeight (96px)
+ * - 펼친 상태: expandedHeight (130px)
  *
  * **레이아웃 (펼친 상태)**:
  * - 헤더 행: [▼/▶ 버튼] [ON/OFF 토글]
@@ -33,7 +33,7 @@ public:
      * @param enabledParamId ON/OFF 토글에 연결할 파라미터 ID
      * @param paramIds       노브에 연결할 파라미터 ID 배열
      * @param paramLabels    각 노브 아래 표시할 라벨 배열
-     * @note 최대 6개 파라미터 노브 지원
+     * @note 파라미터 노브 수는 paramIds 배열 크기로 결정된다
      */
     EffectBlock (const juce::String& name,
                  juce::AudioProcessorValueTreeState& apvts,
@@ -74,7 +74,6 @@ private:
 
     // 파라미터 노브 배열
     juce::OwnedArray<Knob> knobs;
-    juce::OwnedArray<juce::AudioProcessorValueTreeState::SliderAttachment> knobAttachments;
     juce::StringArray knobLabels;
 
     // 현재 상태: false = 접힘(기본), true = 펼침

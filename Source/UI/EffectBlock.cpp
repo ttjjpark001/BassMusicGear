@@ -77,16 +77,17 @@ void EffectBlock::resized()
 {
     auto area = getLocalBounds().reduced (4);
 
-    // --- 헤더 행: [▶/▼ 버튼 28px] [ON/OFF 토글 나머지] ---
+    // 헤더 행: [펼치기/접기 버튼 28px] [ON/OFF 토글 나머지 공간]
     auto headerRow = area.removeFromTop (collapsedHeight - 8);
     expandButton.setBounds (headerRow.removeFromLeft (28));
     enabledToggle.setBounds (headerRow);
 
+    // 접혀 있거나 파라미터가 없으면 헤더만 표시
     if (!expanded || knobs.isEmpty())
         return;
 
-    // --- 노브 행: 남은 공간을 노브 개수로 균등 분할 ---
-    area.removeFromTop (4);  // 헤더와 노브 사이 간격
+    // 펼친 상태: 노브들을 수평으로 균등 분할하여 배치
+    area.removeFromTop (4);  // 헤더와 노브 행 사이 간격
     const int knobWidth = area.getWidth() / knobs.size();
     for (auto* knob : knobs)
         knob->setBounds (area.removeFromLeft (knobWidth));

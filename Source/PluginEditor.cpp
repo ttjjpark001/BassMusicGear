@@ -18,6 +18,8 @@ PluginEditor::PluginEditor (PluginProcessor& p)
         "Overdrive", p.apvts, "od_enabled",
         juce::StringArray { "od_drive", "od_tone", "od_dry_blend" },
         juce::StringArray { "Drive", "Tone", "Blend" });
+    // 블록이 펼쳐지거나 접힐 때 전체 창 높이를 재계산하여 레이아웃을 동적으로 조정한다.
+    // 접힌 상태(36px) ↔ 펼친 상태(130px) 전환 시 자동으로 창 크기 변경.
     overdriveBlock->onExpandChange = [this] { setSize (getWidth(), calculateNeededHeight()); };
     addAndMakeVisible (*overdriveBlock);
 
@@ -59,19 +61,22 @@ void PluginEditor::paint (juce::Graphics& g)
 
 int PluginEditor::calculateNeededHeight() const
 {
+    // 이펙터 블록의 현재 상태(접힘/펼침)를 읽어 높이를 결정한다.
+    // 펼친 상태: 130px, 접힌 상태: 36px
     auto fxH = [](const EffectBlock& b) {
         return b.getExpanded() ? EffectBlock::expandedHeight : EffectBlock::collapsedHeight;
     };
 
-    return 35                              // 타이틀
-         + 22                             // 하단 Phase 표시
-         + 42 + 4                         // TunerDisplay + 갭
-         + fxH (*overdriveBlock)     + 2  // Pre-FX 1
-         + fxH (*octaverBlock)       + 2  // Pre-FX 2
-         + fxH (*envelopeFilterBlock) + 6 // Pre-FX 3 + 갭
-         + 290 + 4                        // AmpPanel + 갭
-         + 95                             // CabinetSelector
-         + 10;                            // 상하 패딩 (reduced 5)
+    // 전체 창 높이 = 헤더 + 튜너 + Pre-FX 블록들 + 앰프 패널 + 캐비닛 선택기 + 패딩
+    return 35                              // 타이틀 (BassMusicGear)
+         + 22                              // 하단 Phase 표시
+         + 42 + 4                          // TunerDisplay(42) + 갭(4)
+         + fxH (*overdriveBlock)     + 2   // Overdrive 블록 + 갭(2)
+         + fxH (*octaverBlock)       + 2   // Octaver 블록 + 갭(2)
+         + fxH (*envelopeFilterBlock) + 6  // EnvelopeFilter 블록 + 갭(6)
+         + 290 + 4                         // AmpPanel(290) + 갭(4)
+         + 95                              // CabinetSelector(95)
+         + 10;                             // 상하 패딩 (area.reduced(5) × 2)
 }
 
 void PluginEditor::resized()

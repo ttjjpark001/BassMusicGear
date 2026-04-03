@@ -4,9 +4,9 @@ BassMusicGear 구현 백로그.
 완료된 Phase들 중 아직 구현되지 않은 항목을 관리한다.
 미래 Phase의 항목은 포함하지 않는다.
 
-**마지막 갱신**: 2026-03-29
-**기준 Phase**: Phase 0 ~ Phase 3 (완료 기준)
-**총 미구현 항목**: 5건 (미구현 1건 / 부분 구현 2건 / 확인 필요 2건)
+**마지막 갱신**: 2026-04-02
+**기준 Phase**: Phase 0 ~ Phase 4 (완료 기준)
+**총 미구현 항목**: 6건 (미구현 1건 / 부분 구현 2건 / 확인 필요 3건)
 
 > 📌 **Amp Voicing 처리 Phase 결정됨**: Phase 6에서 구현. PLAN.md Phase 6 ✅ CARRY 항목으로 등록 완료.
 
@@ -29,6 +29,14 @@ BassMusicGear 구현 백로그.
 |--------|------|---------|--------------|------|
 | 🟡 부분 구현 | 앰프 모델별 실제 캐비닛 IR 연결 | Phase 2 신규 | Phase 9 (릴리즈 준비) | AmpModelLibrary.cpp 주석에 American Vintage("ir_8x10_svt_wav", "임시 placeholder IR")와 Italian Clean("ir_1x15_vintage_wav", "Italian Clean 전용 IR 미확보, 1x15 Vintage로 대체")이 임시 IR 사용 중임을 명시. CabinetSelector.cpp 주석도 "8x10 SVT (placeholder)"로 표기. Phase 9에서 무료 IR 라이브러리(Torpedo WoS, Celestion Free, OpenIR 등)에서 실제 IR WAV를 취득하여 Resources/IR/에 추가하고 AmpModelLibrary.cpp의 defaultIRName 필드와 CabinetSelector.cpp의 switch 케이스를 교체해야 함. |
 | 🟢 확인 필요 | 앰프 모델별 UI 색상 테마 | P1 이월 (→ Phase 8) | Phase 8 | AmpModel.h에 themeColour 필드가 선언되어 있고 AmpModelLibrary.cpp에 5종 색상값(American Vintage 주황/Tweed 크림/British 진한주황/Modern 초록/Italian 파랑)이 등록되어 있으나, Source 전체에서 themeColour를 읽거나 LookAndFeel에 적용하는 코드가 없음. Phase 8 CARRY로 처리 예정. |
+
+### Phase 4 — Pre-FX
+
+| 심각도 | 항목 | 원래 분류 | 처리 예정 Phase | 설명 |
+|--------|------|---------|--------------|------|
+| 🟢 확인 필요 | Overdrive 타입 선택 UI (od_type) 미구현 | Phase 4 구현 누락 | Phase 8 | `od_type` APVTS 파라미터가 존재하나 EffectBlock에 ComboBox 미노출. 현재 기본값 Tube만 동작 가능. JFET/Fuzz 타입 전환은 Phase 8에서 Overdrive EffectBlock에 타입 선택 ComboBox를 추가하여 해결. |
+
+---
 
 ### Phase 3 — 튜너 + 컴프레서
 

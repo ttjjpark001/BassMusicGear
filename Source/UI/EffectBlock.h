@@ -5,19 +5,28 @@
 #include "Knob.h"
 
 /**
- * @brief 접기/펼치기 가능한 이펙터 블록 범용 UI 컴포넌트 (Pre-FX/Post-FX 공용)
+ * @brief 접기/펼치기 가능한 이펙터 블록 범용 UI 컴포넌트
  *
- * ON/OFF 토글 + 임의 개수의 파라미터 노브를 수평 배치하는 범용 컴포넌트.
- * 접힌 상태(collapsed)에서는 헤더만 표시하고,
- * 펼친 상태(expanded)에서는 노브 전체를 표시한다.
+ * Pre-FX(Overdrive, Octaver, EnvelopeFilter)와 Post-FX(Chorus, Delay, Reverb)
+ * 모두에서 재사용 가능한 범용 이펙터 UI 컴포넌트.
  *
- * **높이**:
- * - 접힌 상태: collapsedHeight (36px)
- * - 펼친 상태: expandedHeight (130px)
+ * **구성**:
+ * - ON/OFF 토글 + 접기/펼치기 버튼
+ * - 임의 개수의 파라미터 노브 (수평 배치)
+ * - 선택 파라미터용 ComboBox (예: Reverb Type, Env Filter Direction)
+ *
+ * **상태**:
+ * - 접힌 상태(collapsed): 36px 높이, 헤더(토글+버튼)만 표시
+ * - 펼친 상태(expanded): 130px 높이, 헤더 + 노브/콤보박스 전체 표시
  *
  * **레이아웃 (펼친 상태)**:
- * - 헤더 행: [▼/▶ 버튼] [ON/OFF 토글]
- * - 노브 행: 파라미터 노브 수평 배치
+ * ```
+ * 헤더행: [▼ 버튼(28px)] [ON/OFF 토글 "Overdrive" ...]
+ * 노브행: [노브1: Drive] [노브2: Tone] [노브3: Blend] ...
+ * ```
+ *
+ * **동적 레이아웃**: 접기/펼치기 상태 변경 시 onExpandChange 콜백으로
+ * PluginEditor에 알림 → 전체 창 높이 자동 재계산
  */
 class EffectBlock : public juce::Component
 {
@@ -33,13 +42,17 @@ public:
      * @param enabledParamId ON/OFF 토글에 연결할 파라미터 ID
      * @param paramIds       노브에 연결할 파라미터 ID 배열
      * @param paramLabels    각 노브 아래 표시할 라벨 배열
+     * @param comboParamIds  ComboBox에 연결할 파라미터 ID 배열 (선택 사항)
+     * @param comboLabels    각 ComboBox 아래 표시할 라벨 배열 (선택 사항)
      * @note 파라미터 노브 수는 paramIds 배열 크기로 결정된다
      */
     EffectBlock (const juce::String& name,
                  juce::AudioProcessorValueTreeState& apvts,
                  const juce::String& enabledParamId,
                  const juce::StringArray& paramIds,
-                 const juce::StringArray& paramLabels);
+                 const juce::StringArray& paramLabels,
+                 const juce::StringArray& comboParamIds = {},
+                 const juce::StringArray& comboLabels = {});
 
     ~EffectBlock() override;
 
@@ -50,9 +63,11 @@ public:
     bool getExpanded() const { return expanded; }
 
     /**
-     * @brief 접기/펼치기 상태 설정
-     * @param shouldBeExpanded true = 펼침, false = 접힘
-     * 상태 변경 시 onExpandChange 콜백을 호출한다.
+     * @brief 접기/펼치기 상태를 설정한다.
+     *
+     * @param shouldBeExpanded  true = 펼침(노브 표시), false = 접힘(헤더만 표시)
+     * @note 상태 변경 시 노브 가시성을 토글하고,
+     *       onExpandChange 콜백을 호출하여 PluginEditor의 레이아웃 재계산을 트리거한다.
      */
     void setExpanded (bool shouldBeExpanded);
 
@@ -75,6 +90,11 @@ private:
     // 파라미터 노브 배열
     juce::OwnedArray<Knob> knobs;
     juce::StringArray knobLabels;
+
+    // ComboBox 배열 (선택 파라미터 지원)
+    juce::OwnedArray<juce::ComboBox> combos;
+    juce::OwnedArray<juce::Label> comboLabelComponents;
+    juce::OwnedArray<juce::AudioProcessorValueTreeState::ComboBoxAttachment> comboAttachments;
 
     // 현재 상태: false = 접힘(기본), true = 펼침
     bool expanded = false;

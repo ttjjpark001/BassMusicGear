@@ -354,6 +354,126 @@ PluginProcessor::createParameterLayout()
         juce::ParameterID { "ef_direction", 1 }, "EF Direction",
         juce::StringArray { "Up", "Down" }, 0));
 
+    //--------------------------------------------------------------------------
+    // Graphic EQ (10-band, Post-ToneStack)
+    //--------------------------------------------------------------------------
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "geq_enabled", 1 }, "Graphic EQ", true));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "geq_31", 1 }, "31 Hz",
+        juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "geq_63", 1 }, "63 Hz",
+        juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "geq_125", 1 }, "125 Hz",
+        juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "geq_250", 1 }, "250 Hz",
+        juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "geq_500", 1 }, "500 Hz",
+        juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "geq_1k", 1 }, "1 kHz",
+        juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "geq_2k", 1 }, "2 kHz",
+        juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "geq_4k", 1 }, "4 kHz",
+        juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "geq_8k", 1 }, "8 kHz",
+        juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "geq_16k", 1 }, "16 kHz",
+        juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    //--------------------------------------------------------------------------
+    // Chorus (Post-FX)
+    //--------------------------------------------------------------------------
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "chorus_enabled", 1 }, "Chorus", false));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "chorus_rate", 1 }, "Chorus Rate",
+        juce::NormalisableRange<float> (0.1f, 10.0f, 0.01f), 1.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("Hz")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "chorus_depth", 1 }, "Chorus Depth",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "chorus_mix", 1 }, "Chorus Mix",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
+
+    //--------------------------------------------------------------------------
+    // Delay (Post-FX)
+    //--------------------------------------------------------------------------
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "delay_enabled", 1 }, "Delay", false));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "delay_time", 1 }, "Delay Time",
+        juce::NormalisableRange<float> (10.0f, 2000.0f, 1.0f), 500.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("ms")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "delay_feedback", 1 }, "Delay Feedback",
+        juce::NormalisableRange<float> (0.0f, 0.95f, 0.01f), 0.3f));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "delay_damping", 1 }, "Delay Damping",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.3f));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "delay_mix", 1 }, "Delay Mix",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
+
+    //--------------------------------------------------------------------------
+    // Reverb (Post-FX)
+    //--------------------------------------------------------------------------
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "reverb_enabled", 1 }, "Reverb", false));
+
+    params.push_back (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { "reverb_type", 1 }, "Reverb Type",
+        juce::StringArray { "Spring", "Room" }, 0));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "reverb_size", 1 }, "Reverb Size",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "reverb_decay", 1 }, "Reverb Decay",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "reverb_mix", 1 }, "Reverb Mix",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.3f));
+
     return { params.begin(), params.end() };
 }
 

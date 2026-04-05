@@ -35,7 +35,7 @@ public:
      * @brief DSP 초기화: YIN 버퍼, 링 버퍼, 엔벨로프 팔로워 계수를 준비한다
      *
      * @param spec  오디오 스펙
-     * @note [메인 스레드] prepareToPlay()에서 호출된다
+     * @note [메인 스레드] SignalChain::prepare() 경유로 호출된다
      */
     void prepare (const juce::dsp::ProcessSpec& spec);
 
@@ -93,7 +93,7 @@ private:
 
     double currentSampleRate = 44100.0;
 
-    // YIN 차분 함수 계산용 버퍼 (yinBufferSize의 절반 크기, prepareToPlay에서 할당)
+    // YIN 차분 함수 계산용 버퍼 (yinBufferSize의 절반 크기, prepare()에서 할당)
     // d[tau] = Σ(x[n]-x[n+tau])² 저장
     std::vector<float> yinBuffer;
     static constexpr int yinBufferSize = 2048;  // YIN 분석 윈도우: 46ms @ 44.1kHz
@@ -103,7 +103,7 @@ private:
     int ringWritePos = 0;  // 링 버퍼의 현재 쓰기 위치
     int ringSamplesAccumulated = 0;  // 축적 샘플 카운터 (hop=512에서 한 번 YIN 실행)
 
-    // YIN 분석용 컨티그 버퍼 (링 버퍼를 일렬로 펼침, prepareToPlay에서 할당)
+    // YIN 분석용 컨티그 버퍼 (링 버퍼를 일렬로 펼침, prepare()에서 할당)
     // 링 버퍼는 순환이므로, YIN 알고리즘에 필요한 연속 메모리 영역을 따로 유지
     std::vector<float> contiguousBuffer;
 

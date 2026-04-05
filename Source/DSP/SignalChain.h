@@ -10,6 +10,10 @@
 #include "Effects/EnvelopeFilter.h"
 #include "Preamp.h"
 #include "ToneStack.h"
+#include "GraphicEQ.h"
+#include "Effects/Chorus.h"
+#include "Effects/Delay.h"
+#include "Effects/Reverb.h"
 #include "PowerAmp.h"
 #include "Cabinet.h"
 #include "../Models/AmpModel.h"
@@ -21,7 +25,9 @@
  * **신호 체인 전체 순서**:
  * 입력 → [NoiseGate] → [Tuner(YIN)] → [Compressor] → [BiAmp placeholder]
  *     → [Overdrive(Tube/JFET/Fuzz)] → [Octaver(YIN)] → [EnvelopeFilter(SVF)]
- *     → [Preamp(4xOS)] → [ToneStack(모델별)] → [PowerAmp(Drive/Presence/Sag)] → [Cabinet(IR)] → 출력
+ *     → [Preamp(4xOS)] → [ToneStack(모델별)] → [GraphicEQ(10밴드)]
+ *     → [Chorus] → [Delay] → [Reverb]
+ *     → [PowerAmp(Drive/Presence/Sag)] → [Cabinet(IR)] → 출력
  *
  * **각 블록의 역할**:
  * 1. **NoiseGate**: 허밍 및 배경 노이즈 제거 (히스테리시스 게이트)
@@ -31,8 +37,12 @@
  *    - ClassDLinear: 선형 증폭
  * 3. **ToneStack**: 톤 컨트롤 (모델별 고유한 토폴로지)
  *    - TMB, Baxandall, James, BaxandallGrunt, MarkbassFourBand
- * 4. **PowerAmp**: 포화 + 고음 강조 필터 + Sag(튜브만)
- * 5. **Cabinet**: 콘볼루션으로 캐비닛 스피커 시뮬레이션 (5종 내장 IR)
+ * 4. **GraphicEQ**: 10밴드 Constant-Q 피킹 바이쿼드 (31Hz~16kHz, +/-12dB)
+ * 5. **Chorus**: LFO 딜레이 모듈레이션
+ * 6. **Delay**: Time/Feedback/Damping/Mix
+ * 7. **Reverb**: Spring/Room 알고리즘 리버브
+ * 8. **PowerAmp**: 포화 + 고음 강조 필터 + Sag(튜브만)
+ * 9. **Cabinet**: 콘볼루션으로 캐비닛 스피커 시뮬레이션 (5종 내장 IR)
  *
  * **모델 전환 메커니즘** (setAmpModel):
  * - ToneStack: 토폴로지 재설정 (compute*Coefficients 로직 선택)
@@ -53,7 +63,8 @@ public:
     /**
      * @brief 신호 체인 전체를 DSP 초기화한다.
      *
-     * 모든 블록(Gate/Tuner/Compressor/Overdrive/Octaver/EnvelopeFilter/Preamp/ToneStack/PowerAmp/Cabinet)을 순서대로 prepare한다.
+     * 모든 블록(Gate/Tuner/Compressor/Overdrive/Octaver/EnvelopeFilter/Preamp/ToneStack/
+     * GraphicEQ/Chorus/Delay/Reverb/PowerAmp/Cabinet)을 순서대로 prepare한다.
      * 오버샘플링, 필터, 컨볼루션 등의 버퍼를 할당한다.
      *
      * @param spec  오디오 스펙 (sampleRate, samplesPerBlock)
@@ -65,7 +76,8 @@ public:
      * @brief 오디오 버퍼를 신호 체인 전체에 통과시킨다.
      *
      * Gate → Tuner → Compressor → Overdrive → Octaver → EnvelopeFilter
-     * → Preamp → ToneStack → PowerAmp → Cabinet 순서로 처리.
+     * → Preamp → ToneStack → GraphicEQ → Chorus → Delay → Reverb
+     * → PowerAmp → Cabinet 순서로 처리.
      * 각 블록은 In-place로 버퍼를 수정한다.
      *
      * @param buffer  모노 오디오 버퍼
@@ -169,6 +181,10 @@ private:
     EnvelopeFilter envelopeFilter;  // Pre-FX: SVF 필터 + 엔벨로프 팔로워 변조
     Preamp         preamp;          // 입력 이득 스테이징 + 타입별 웨이브쉐이핑 (4배 OS)
     ToneStack      toneStack;       // 모델별 톤 컨트롤 (TMB, Baxandall, James 등)
+    GraphicEQ      graphicEQ;       // 10밴드 Constant-Q 피킹 바이쿼드 (31Hz~16kHz, +/-12dB)
+    Chorus         chorus;          // Post-FX: LFO 딜레이 모듈레이션
+    Delay          delay;           // Post-FX: Time/Feedback/Damping/Mix
+    Reverb         reverb;          // Post-FX: Spring/Room 알고리즘 리버브
     PowerAmp       powerAmp;        // 포화 + Presence 피킹 필터 + Sag 엔벨로프(튜브만)
     Cabinet        cabinet;         // 컨볼루션 캐비닛 IR 적용
 
@@ -187,6 +203,12 @@ private:
     float prevAttack    = -1.0f;    // 이전 Attack 값 (Modern Micro)
     int   prevMidPos    = -1;       // 이전 Mid Position (American Vintage)
     int   prevAmpModel  = -1;       // 이전 앰프 모델 인덱스
+
+    // GraphicEQ 파라미터 변경 감지 (10밴드 이전값)
+    // 각 밴드의 이전 이득값을 보관하여 updateCoefficientsFromMainThread()에서
+    // 변경된 밴드만 필터 계수를 재계산하도록 최적화
+    float prevGEQGains[GraphicEQ::numBands] = { -999.0f, -999.0f, -999.0f, -999.0f, -999.0f,
+                                                 -999.0f, -999.0f, -999.0f, -999.0f, -999.0f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SignalChain)
 };

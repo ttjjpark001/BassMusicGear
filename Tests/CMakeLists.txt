@@ -6,6 +6,7 @@ add_executable(BassMusicGear_Tests
     ToneStackTest.cpp
     OverdriveTest.cpp
     CompressorTest.cpp
+    GraphicEQTest.cpp
 )
 
 # Add DSP source files needed by tests (compiled separately from plugin target)
@@ -17,6 +18,10 @@ target_sources(BassMusicGear_Tests
         "${CMAKE_SOURCE_DIR}/Source/DSP/Effects/Overdrive.cpp"
         "${CMAKE_SOURCE_DIR}/Source/DSP/Effects/Octaver.cpp"
         "${CMAKE_SOURCE_DIR}/Source/DSP/Effects/EnvelopeFilter.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/DSP/GraphicEQ.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/DSP/Effects/Chorus.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/DSP/Effects/Delay.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/DSP/Effects/Reverb.cpp"
         "${CMAKE_SOURCE_DIR}/Source/Models/AmpModelLibrary.cpp"
 )
 

@@ -72,13 +72,14 @@ juce_add_plugin(BassMusicGear
 #==============================================================================
 juce_add_binary_data(BassMusicGear_BinaryData
     SOURCES
-        Resources/placeholder.txt
-        Resources/IR/placeholder_ir.wav
-        Resources/IR/ir_8x10_svt.wav
-        Resources/IR/ir_4x10_jbl.wav
+        
         Resources/IR/ir_1x15_vintage.wav
-        Resources/IR/ir_2x12_british.wav
         Resources/IR/ir_2x10_modern.wav
+        Resources/IR/ir_2x12_british.wav
+        Resources/IR/ir_4x10_jbl.wav
+        Resources/IR/ir_8x10_svt.wav
+        Resources/IR/placeholder_ir.wav
+        Resources/placeholder.txt
 )
 
 # BinaryData 라이브러리는 공유 라이브러리(.so)로 링크될 수 있으므로
@@ -108,6 +109,14 @@ target_sources(BassMusicGear
         Source/DSP/Effects/Octaver.cpp
         Source/DSP/Effects/EnvelopeFilter.h
         Source/DSP/Effects/EnvelopeFilter.cpp
+        Source/DSP/Effects/Chorus.h
+        Source/DSP/Effects/Chorus.cpp
+        Source/DSP/Effects/Delay.h
+        Source/DSP/Effects/Delay.cpp
+        Source/DSP/Effects/Reverb.h
+        Source/DSP/Effects/Reverb.cpp
+        Source/DSP/GraphicEQ.h
+        Source/DSP/GraphicEQ.cpp
         Source/DSP/Tuner.h
         Source/DSP/Tuner.cpp
         Source/DSP/ToneStack.h
@@ -130,6 +139,8 @@ target_sources(BassMusicGear
         Source/UI/TunerDisplay.cpp
         Source/UI/EffectBlock.h
         Source/UI/EffectBlock.cpp
+        Source/UI/GraphicEQPanel.h
+        Source/UI/GraphicEQPanel.cpp
         Source/Models/AmpModel.h
         Source/Models/AmpModelLibrary.h
         Source/Models/AmpModelLibrary.cpp

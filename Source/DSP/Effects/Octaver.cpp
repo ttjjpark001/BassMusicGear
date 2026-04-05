@@ -58,25 +58,22 @@ void Octaver::setParameterPointers (std::atomic<float>* enabled,
     dryLevelParam = dryLevel;
 }
 
-//==============================================================================
 // YIN 피치 감지 알고리즘
-//==============================================================================
+// **YIN**: 자기상관 기반 기본주파수(fundamental frequency) 추정
+// 부음역(subharmonic)에 강건하여 베이스 음역(41Hz~330Hz)에 최적화
+// 참고: de Cheveigné & Kawahara (2002) "YIN, a fundamental frequency estimator for speech and music"
 float Octaver::detectPitch (const float* data, int numSamples)
 {
-    // **YIN 알고리즘**: 자기상관 기반 피치 추정
-    // 부음역에 강건하므로 베이스 음역(41Hz~330Hz)에 최적화
-    // 참고: de Cheveigné & Kawahara (2002) "YIN, a fundamental frequency estimator for speech and music"
-
     const int halfN = numSamples / 2;
     if (halfN < 2) return 0.0f;
 
     auto& d = yinBuffer;
     if (static_cast<int> (d.size()) < halfN)
-        return 0.0f; // 버퍼 크기 체크
+        return 0.0f;  // 버퍼 크기 부족
 
-    // --- 단계 1: 차분 함수 계산 ---
-    // d[tau] = Σ(x[n] - x[n+tau])² for n=0~halfN-1
-    // tau가 음의 주기를 나타낼 때 차분이 작아짐 (피치 주기성 반영)
+    // --- 단계 1: 차분 함수(difference function) 계산 ---
+    // d[tau] = Σ_{n=0}^{N-1} (x[n] - x[n+tau])²
+    // tau가 기본주기를 나타낼 때 차분이 최소값을 가짐 (신호의 자기상관 활용)
     d[0] = 0.0f;
     for (int tau = 1; tau < halfN; ++tau)
     {
@@ -89,9 +86,9 @@ float Octaver::detectPitch (const float* data, int numSamples)
         d[static_cast<size_t> (tau)] = sum;
     }
 
-    // --- 단계 2: CMND (누적 정규화 차분) 계산 ---
-    // d'[tau] = d[tau] * tau / Σd[1..tau]
-    // 정규화로 에너지에 무관한 신뢰도 계산 (큰 에너지 신호도 작은 신호도 비교 가능)
+    // --- 단계 2: CMND (누적 정규화 차분, Cumulative Mean Normalized Difference) ---
+    // d'[tau] = d[tau] / (1/τ × Σ_{j=1}^{τ} d[j])
+    // 정규화로 신호 에너지에 무관한 신뢰도 계산 (큰 신호와 작은 신호 비교 가능)
     d[0] = 1.0f;
     float runningSum = 0.0f;
     for (int tau = 1; tau < halfN; ++tau)
@@ -187,7 +184,7 @@ void Octaver::process (juce::AudioBuffer<float>& buffer)
             ringSamplesAccumulated = 0;
 
             // 링 버퍼를 일렬로 펼침 (YIN은 연속 메모리 필요)
-            // contiguousBuffer는 prepareToPlay에서 할당했으므로 매 호출마다 재할당 없음
+            // contiguousBuffer는 prepare()에서 할당했으므로 매 호출마다 재할당 없음
             for (int j = 0; j < yinBufferSize; ++j)
             {
                 int idx = (ringWritePos + j) % yinBufferSize;
@@ -224,18 +221,26 @@ void Octaver::process (juce::AudioBuffer<float>& buffer)
 
         if (currentFrequency > 0.0f && envelopeLevel > 0.001f)
         {
-            // 서브옥타브: F0/2 사인파 생성
-            // 위상: phase += freq / SR (정규화)
+            // --- Sub-octave: F0/2 sine wave (clean sub tone) ---
             const double subFreq = static_cast<double> (currentFrequency) * 0.5;
             subPhase += subFreq / currentSampleRate;
-            if (subPhase >= 1.0) subPhase -= 1.0;  // wrap-around: [0~1)
+            if (subPhase >= 1.0) subPhase -= 1.0;
             subSample = static_cast<float> (std::sin (twoPi * subPhase)) * envelopeLevel;
 
-            // 옥타브업: F0*2 사인파 생성
+            // --- Oct-Up: full-wave rectification + tracking oscillator blend ---
+            // Full-wave rectification naturally doubles the fundamental frequency.
+            // We blend the rectified signal with a phase-locked sine oscillator
+            // for a richer, more musical octave-up tone.
             const double upFreq = static_cast<double> (currentFrequency) * 2.0;
             upPhase += upFreq / currentSampleRate;
             if (upPhase >= 1.0) upPhase -= 1.0;
-            upSample = static_cast<float> (std::sin (twoPi * upPhase)) * envelopeLevel;
+
+            // Full-wave rectification of input (instant octave doubling)
+            const float rectified = std::abs (inputSample);
+            // Phase-locked sine oscillator (clean tracking)
+            const float sinOsc = static_cast<float> (std::sin (twoPi * upPhase)) * envelopeLevel;
+            // Blend: 60% rectified + 40% sine for natural harmonics with stable pitch
+            upSample = (0.6f * rectified + 0.4f * sinOsc);
         }
 
         // --- 최종 혼합: 드라이(원본) + 서브옥타브 + 옥타브업 ---

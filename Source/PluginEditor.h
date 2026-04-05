@@ -6,6 +6,7 @@
 #include "UI/CabinetSelector.h"
 #include "UI/TunerDisplay.h"
 #include "UI/EffectBlock.h"
+#include "UI/GraphicEQPanel.h"
 
 /**
  * @brief BassMusicGear 플러그인 에디터 (UI, Phase 4)
@@ -103,6 +104,14 @@ private:
     std::unique_ptr<EffectBlock> overdriveBlock;
     std::unique_ptr<EffectBlock> octaverBlock;
     std::unique_ptr<EffectBlock> envelopeFilterBlock;
+
+    // Graphic EQ panel (10-band)
+    GraphicEQPanel graphicEQPanel;
+
+    // Post-FX effect blocks
+    std::unique_ptr<EffectBlock> chorusBlock;
+    std::unique_ptr<EffectBlock> delayBlock;
+    std::unique_ptr<EffectBlock> reverbBlock;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginEditor)
 };

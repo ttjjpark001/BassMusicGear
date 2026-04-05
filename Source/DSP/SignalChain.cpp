@@ -5,7 +5,7 @@
  * @brief 신호 체인 전체를 DSP 초기화한다.
  *
  * 모든 블록(Gate/Tuner/Compressor/Overdrive/Octaver/EnvelopeFilter/
- * Preamp/ToneStack/PowerAmp/Cabinet)을
+ * Preamp/ToneStack/GraphicEQ/Chorus/Delay/Reverb/PowerAmp/Cabinet)을
  * 순서대로 prepare하여 버퍼 할당, 오버샘플링 초기화, 필터 계수 생성 등을 수행.
  *
  * **오버샘플링 지연**:
@@ -22,7 +22,7 @@ void SignalChain::prepare (const juce::dsp::ProcessSpec& spec)
     juce::dsp::ProcessSpec monoSpec = spec;
     monoSpec.numChannels = 1;
 
-    // --- 신호 체인 순서: Gate → Tuner → Compressor → Overdrive → Octaver → EnvelopeFilter → Preamp → ToneStack → PowerAmp → Cabinet ---
+    // --- 신호 체인 순서: Gate → Tuner → Compressor → Overdrive → Octaver → EnvelopeFilter → Preamp → ToneStack → GraphicEQ → Chorus → Delay → Reverb → PowerAmp → Cabinet ---
     noiseGate.prepare (monoSpec);
     tuner.prepare (monoSpec);
     compressor.prepare (monoSpec);
@@ -31,6 +31,10 @@ void SignalChain::prepare (const juce::dsp::ProcessSpec& spec)
     envelopeFilter.prepare (monoSpec);
     preamp.prepare (monoSpec);
     toneStack.prepare (monoSpec);
+    graphicEQ.prepare (monoSpec);
+    chorus.prepare (monoSpec);
+    delay.prepare (monoSpec);
+    reverb.prepare (monoSpec);
     powerAmp.prepare (monoSpec);
     cabinet.prepare (monoSpec);
 }
@@ -53,6 +57,10 @@ void SignalChain::reset()
     envelopeFilter.reset();
     preamp.reset();
     toneStack.reset();
+    graphicEQ.reset();
+    chorus.reset();
+    delay.reset();
+    reverb.reset();
     powerAmp.reset();
     cabinet.reset();
 }
@@ -153,6 +161,10 @@ void SignalChain::setAmpModel (AmpModelId modelId)
  * - Cabinet: cab_bypass
  * - Tuner: tuner_reference_a, tuner_mute
  * - Compressor: comp_enabled, comp_threshold, comp_ratio, comp_attack, comp_release, comp_makeup, comp_dry_blend
+ * - GraphicEQ: geq_enabled, geq_31~geq_16k (10밴드)
+ * - Chorus: chorus_enabled, chorus_rate, chorus_depth, chorus_mix
+ * - Delay: delay_enabled, delay_time, delay_feedback, delay_damping, delay_mix
+ * - Reverb: reverb_enabled, reverb_type, reverb_size, reverb_decay, reverb_mix
  * - 모델별 추가 파라미터: vpf, vle, grunt, attack, mid_position (updateCoefficientsFromMainThread에서 처리)
  *
  * @param apvts  APVTS 인스턴스
@@ -229,6 +241,48 @@ void SignalChain::connectParameters (juce::AudioProcessorValueTreeState& apvts)
         apvts.getRawParameterValue ("ef_freq_max"),
         apvts.getRawParameterValue ("ef_resonance"),
         apvts.getRawParameterValue ("ef_direction"));
+
+    // --- GraphicEQ 파라미터 ---
+    {
+        std::atomic<float>* geqGains[GraphicEQ::numBands] = {
+            apvts.getRawParameterValue ("geq_31"),
+            apvts.getRawParameterValue ("geq_63"),
+            apvts.getRawParameterValue ("geq_125"),
+            apvts.getRawParameterValue ("geq_250"),
+            apvts.getRawParameterValue ("geq_500"),
+            apvts.getRawParameterValue ("geq_1k"),
+            apvts.getRawParameterValue ("geq_2k"),
+            apvts.getRawParameterValue ("geq_4k"),
+            apvts.getRawParameterValue ("geq_8k"),
+            apvts.getRawParameterValue ("geq_16k")
+        };
+        graphicEQ.setParameterPointers (
+            apvts.getRawParameterValue ("geq_enabled"),
+            geqGains);
+    }
+
+    // --- Chorus 파라미터 ---
+    chorus.setParameterPointers (
+        apvts.getRawParameterValue ("chorus_enabled"),
+        apvts.getRawParameterValue ("chorus_rate"),
+        apvts.getRawParameterValue ("chorus_depth"),
+        apvts.getRawParameterValue ("chorus_mix"));
+
+    // --- Delay 파라미터 ---
+    delay.setParameterPointers (
+        apvts.getRawParameterValue ("delay_enabled"),
+        apvts.getRawParameterValue ("delay_time"),
+        apvts.getRawParameterValue ("delay_feedback"),
+        apvts.getRawParameterValue ("delay_damping"),
+        apvts.getRawParameterValue ("delay_mix"));
+
+    // --- Reverb 파라미터 ---
+    reverb.setParameterPointers (
+        apvts.getRawParameterValue ("reverb_enabled"),
+        apvts.getRawParameterValue ("reverb_type"),
+        apvts.getRawParameterValue ("reverb_size"),
+        apvts.getRawParameterValue ("reverb_decay"),
+        apvts.getRawParameterValue ("reverb_mix"));
 }
 
 /**
@@ -293,6 +347,28 @@ void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTre
     {
         powerAmp.updatePresenceFilter (presence);
         prevPresence = presence;
+    }
+
+    // --- GraphicEQ 계수 (10밴드) ---
+    {
+        static const char* geqIds[GraphicEQ::numBands] = {
+            "geq_31", "geq_63", "geq_125", "geq_250", "geq_500",
+            "geq_1k", "geq_2k", "geq_4k", "geq_8k", "geq_16k"
+        };
+        float currentGains[GraphicEQ::numBands];
+        bool changed = false;
+        for (int i = 0; i < GraphicEQ::numBands; ++i)
+        {
+            currentGains[i] = apvts.getRawParameterValue (geqIds[i])->load();
+            if (currentGains[i] != prevGEQGains[i])
+                changed = true;
+        }
+        if (changed)
+        {
+            graphicEQ.updateCoefficients (currentGains);
+            for (int i = 0; i < GraphicEQ::numBands; ++i)
+                prevGEQGains[i] = currentGains[i];
+        }
     }
 
     // --- 모델별 추가 파라미터 ---
@@ -364,6 +440,10 @@ void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTre
  *     → [EnvelopeFilter (SVF + 엔벨로프 팔로워)]
  *     → [Preamp (입력 게인 + 웨이브쉐이핑 + 4배 OS)]
  *     → [ToneStack (모델별 톤 컨트롤)]
+ *     → [GraphicEQ (10밴드 Constant-Q +/-12dB)]
+ *     → [Chorus (LFO 딜레이 모듈레이션)]
+ *     → [Delay (Time/Feedback/Damping/Mix)]
+ *     → [Reverb (Spring/Room 알고리즘 리버브)]
  *     → [PowerAmp (포화 + Presence 필터 + Sag)]
  *     → [Cabinet (콘볼루션 IR)]
  *     → 출력
@@ -389,6 +469,10 @@ void SignalChain::process (juce::AudioBuffer<float>& buffer)
     envelopeFilter.process (buffer);     // 6. Pre-FX: SVF 필터 + 엔벨로프 팔로워 변조 (피킹 반응)
     preamp.process (buffer);             // 7. 입력 이득 스테이징 + 타입별 웨이브쉐이핑 (4배 OS)
     toneStack.process (buffer);          // 8. 모델별 톤 컨트롤 (Bass/Mid/Treble 이퀄라이저)
-    powerAmp.process (buffer);           // 9. 파워 포화 + Presence 피킹 필터 + Sag 압축(튜브만)
-    cabinet.process (buffer);            // 10. 컨볼루션 캐비닛 IR 적용 (스피커 시뮬레이션)
+    graphicEQ.process (buffer);          // 9. 10밴드 Constant-Q 그래픽 EQ (+/-12dB)
+    chorus.process (buffer);             // 10. Post-FX: LFO 딜레이 모듈레이션
+    delay.process (buffer);              // 11. Post-FX: Time/Feedback/Damping/Mix
+    reverb.process (buffer);             // 12. Post-FX: Spring/Room 리버브
+    powerAmp.process (buffer);           // 13. 파워 포화 + Presence 피킹 필터 + Sag 압축(튜브만)
+    cabinet.process (buffer);            // 14. 컨볼루션 캐비닛 IR 적용 (스피커 시뮬레이션)
 }

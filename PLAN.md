@@ -343,7 +343,7 @@ PLAN.md의 Phase 5를 구현해줘. PRD.md 섹션 4(Post-FX), 8을 참고한다.
 ## Phase 6 — Bi-Amp 크로스오버 + DI Blend + Amp Voicing
 
 **목표**: 신호 분기(BiAmpCrossover)와 혼합(DIBlend) + IR Position 전환 + 앰프별 고정 Voicing 필터 적용.
-**마일스톤**: Bi-Amp ON 시 저역 클린/고역 앰프 분리 청취, IR Position Pre↔Post 차이 확인, 5종 앰프의 음색이 Cabinet bypass + ToneStack flat 상태에서도 청취로 구분 가능.
+**마일스톤**: Bi-Amp ON 시 저역 클린/고역 앰프 분리 청취, IR Position Pre↔Post 차이 확인, 6종 앰프의 음색이 Cabinet bypass + ToneStack flat 상태에서도 청취로 구분 가능.
 
 ### ✅ CARRY
 - ~~커스텀 IR 파일 로드 `Cabinet::loadIR(File)` (Phase 1 P1)~~ → Phase 1에서 조기 완료
@@ -357,7 +357,9 @@ PLAN.md의 Phase 5를 구현해줘. PRD.md 섹션 4(Post-FX), 8을 참고한다.
   - Pre-IR: `cabinetIR(mixed)` 출력
 - `Source/DSP/AmpVoicing.h/.cpp` — 앰프별 고정 Voicing 필터 (2~3개 바이쿼드). `setModel(AmpModelType)` 호출 시 해당 앰프의 필터 계수 로드. `AmpVoicingPlan.md` 섹션 3 참고
 - `Source/Models/AmpModel.h` 수정 — `struct VoicingBand { float freq, gainDb, q; FilterType type; }`, `std::array<VoicingBand, 3> voicingBands` 추가
-- `Source/Models/AmpModelLibrary.cpp` 수정 — 5종 모델에 Voicing 값 등록 (`AmpVoicingPlan.md` 섹션 3-1~3-5)
+- `Source/Models/AmpModelLibrary.cpp` 수정 — 5종 모델에 Voicing 값 등록 (`AmpVoicingPlan.md` 섹션 3-1~3-5) + **Origin Pure** 6번째 앰프 추가
+  - Origin Pure 스펙: SolidState Preamp + Active Baxandall ToneStack + Class D PowerAmp + Flat Voicing(바이쿼드 계수 모두 0dB) + UI 색상 실버(#c0c0c8)
+  - Italian Clean(Markbass)과 구분점: VPF/VLE 없음, Voicing 완전 플랫 → 가장 투명한 사운드
 - `SignalChain` 대규모 수정 — ① IR Position에 따라 Cabinet ↔ DIBlend 연결 순서 동적 전환. cleanDI 버퍼 별도 할당 (`prepareToPlay`에서). ② `AmpVoicing`을 Preamp와 ToneStack 사이에 삽입. 앰프 모델 전환 시 `ampVoicing.setModel(model)` 호출
 - `Cabinet` 수정 — `loadIR(const juce::File&)` 실제 구현 (✅ CARRY)
 - `Source/UI/BiAmpPanel.h/.cpp` — ON/OFF 토글, Crossover Freq 노브
@@ -373,16 +375,18 @@ PLAN.md의 Phase 5를 구현해줘. PRD.md 섹션 4(Post-FX), 8을 참고한다.
   - Blend=1.0: 출력 = processed × processedLevel
   - IR Position 전환: 동일 입력에서 서로 다른 출력 확인
 - `Tests/AmpVoicingTest.cpp` (신규)
-  - Cabinet bypass + ToneStack flat 상태에서 5종 앰프의 주파수 응답이 서로 다름 확인
+  - Cabinet bypass + ToneStack flat 상태에서 6종 앰프의 주파수 응답이 서로 다름 확인
   - American Vintage: 80Hz +3dB(±1dB), 1.5kHz 감쇠 확인
   - British Stack: 500Hz 부스트, 60Hz 이하 HP 감쇠 확인
   - Modern Micro: 3kHz +4dB(±1dB) 확인
+  - Origin Pure: 전 대역 ±0.5dB 이내 (Voicing 플랫 확인)
 
 ### 스모크 테스트
 - Bi-Amp ON + Crossover 200Hz → 저음 클린/고음 앰프처리 확인
 - IR Position Pre↔Post 전환 시 서로 다른 공간감 확인
 - 커스텀 WAV IR 로드 → 즉시 반영
-- Cabinet bypass + ToneStack flat 상태에서 5종 앰프 순차 전환 → 음색 차이 청취 확인 (`AmpVoicingPlan.md` 섹션 5-3 기준)
+- Cabinet bypass + ToneStack flat 상태에서 6종 앰프 순차 전환 → 음색 차이 청취 확인 (`AmpVoicingPlan.md` 섹션 5-3 기준)
+- Origin Pure 선택 → 노브 센터에서 가장 투명한 사운드 확인 (VPF/VLE 없음)
 
 ### 실행 프롬프트
 ```
@@ -396,7 +400,7 @@ PLAN.md의 Phase 6을 구현해줘. PRD.md 섹션 6, 10과 CLAUDE.md SignalChain
 그 다음:
 - AmpVoicing.h/.cpp (앰프별 고정 바이쿼드 필터 체인, setModel()으로 계수 교체)
 - AmpModel.h 수정 (VoicingBand 구조체 + voicingBands 배열)
-- AmpModelLibrary.cpp 수정 (5종 Voicing 값 등록)
+- AmpModelLibrary.cpp 수정 (5종 Voicing 값 등록 + **Origin Pure 6번째 앰프 추가**: SolidState Preamp + Baxandall ToneStack + Class D PowerAmp + Flat Voicing + 실버 색상 #c0c0c8)
 - SignalChain 수정 — AmpVoicing을 Preamp~ToneStack 사이 삽입 + 앰프 전환 시 setModel() 호출
 - BiAmpCrossover (LR4 크로스오버, ON/OFF, 60~500Hz)
 - DIBlend (Blend/Clean Level/Processed Level/IR Position Pre/Post)
@@ -405,7 +409,7 @@ PLAN.md의 Phase 6을 구현해줘. PRD.md 섹션 6, 10과 CLAUDE.md SignalChain
 
 주의: processBlock 내에서 버퍼 new 절대 금지. /DspAudit으로 AmpVoicing, BiAmpCrossover, DIBlend, SignalChain 점검.
 
-완료 기준: BiAmpCrossoverTest + DIBlendTest + AmpVoicingTest 통과, Standalone에서 분기/혼합 경로 동작 + 5종 앰프 음색 차이 청취 확인.
+완료 기준: BiAmpCrossoverTest + DIBlendTest + AmpVoicingTest 통과, Standalone에서 분기/혼합 경로 동작 + 6종 앰프 음색 차이 청취 확인 (Origin Pure는 가장 투명한 사운드로 구분).
 완료 후 git add/commit/push. 메시지: "feat(phase6): bi-amp LR4 crossover + DI blend + amp voicing filters"
 ```
 

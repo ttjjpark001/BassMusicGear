@@ -601,5 +601,5 @@ PLAN.md의 Phase 9를 구현해줘. PRD.md 섹션 13과 CLAUDE.md AudioDeviceMan
 | Phase 1 | 커스텀 IR 파일 로드 (`Cabinet::loadIR(File)`) | Phase 6 | ✅ (Phase 1에서 조기 완료) |
 | Phase 2 | 앰프 모델별 UI 색상 테마 | Phase 8 | ☐ |
 | Phase 2 | 실제 캐비닛 IR 파일 연결 (8x10 SVT / 4x10 JBL / 1x15 Vintage / 2x12 British / 2x10 Modern) | Phase 9 | ☐ |
-| Phase 4 | Octaver Oct-Up 음질 개선 | Phase 5 | ☐ |
+| Phase 4 | Octaver Oct-Up 음질 개선 | Phase 8 | ☐ |
 | Phase 5 | Delay BPM Sync | Phase 8 | ☐ |

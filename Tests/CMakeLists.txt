@@ -7,6 +7,7 @@ add_executable(BassMusicGear_Tests
     OverdriveTest.cpp
     CompressorTest.cpp
     GraphicEQTest.cpp
+    ReverbTest.cpp
 )
 
 # Add DSP source files needed by tests (compiled separately from plugin target)

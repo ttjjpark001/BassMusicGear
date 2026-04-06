@@ -41,6 +41,8 @@ EffectBlock::EffectBlock (const juce::String& name,
     }
 
     // --- ComboBox 생성 (선택 파라미터 지원) ---
+    // ComboBox를 사용하여 AudioParameterChoice를 UI로 제어한다.
+    // 예: Overdrive의 "Type" (Tube/JFET/Fuzz), Reverb의 "Type" (Spring/Room/Hall/Plate)
     for (int i = 0; i < comboParamIds.size(); ++i)
     {
         const auto& comboId = comboParamIds[i];
@@ -60,6 +62,17 @@ EffectBlock::EffectBlock (const juce::String& name,
         lbl->setFont (juce::FontOptions (10.0f));
         addChildComponent (lbl);
 
+        // APVTS 파라미터를 ComboBox 항목으로 자동 채우기
+        // JUCE의 ComboBoxAttachment는 항목을 자동으로 추가하지 않으므로
+        // AudioParameterChoice의 choices 배열을 순회하며 수동으로 등록해야 한다.
+        // ID는 1부터 시작 (JUCE ComboBox의 ID 관례, 0은 사용하지 않음).
+        if (auto* choiceParam = dynamic_cast<juce::AudioParameterChoice*> (apvts.getParameter (comboId)))
+        {
+            for (int j = 0; j < choiceParam->choices.size(); ++j)
+                combo->addItem (choiceParam->choices[j], j + 1);
+        }
+
+        // ComboBoxAttachment는 addItem()과 무관하게 파라미터 값 동기화만 담당한다.
         auto* att = comboAttachments.add (
             new juce::AudioProcessorValueTreeState::ComboBoxAttachment (apvts, comboId, *combo));
         juce::ignoreUnused (att);

@@ -453,14 +453,20 @@ PluginProcessor::createParameterLayout()
         juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
 
     //--------------------------------------------------------------------------
-    // Reverb (Post-FX)
+    // Reverb (Post-FX): Hall/Plate 타입 추가 (Spring, Room, Hall, Plate 4종)
     //--------------------------------------------------------------------------
+    // 각 타입의 음향 특성:
+    // - Spring(0): 빈티지 스프링 탱크, 짧은 감쇠, 콤팩트한 느낌
+    // - Room(1): 연습실 같은 자연스러운 공간감, 따뜻한 톤
+    // - Hall(2): 콘서트홀의 웅장한 잔향, 밝고 긴 반향, 호화로움
+    // - Plate(3): 금속판 리버브, 초기 반사 선명, 모던하고 밝은 음색
+    // 각 타입별 roomSize/damping/width 매핑은 Reverb.cpp에서 구성된다.
     params.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { "reverb_enabled", 1 }, "Reverb", false));
 
     params.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { "reverb_type", 1 }, "Reverb Type",
-        juce::StringArray { "Spring", "Room" }, 0));
+        juce::StringArray { "Spring", "Room", "Hall", "Plate" }, 0));
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "reverb_size", 1 }, "Reverb Size",

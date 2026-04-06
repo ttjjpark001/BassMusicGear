@@ -472,7 +472,7 @@ void SignalChain::process (juce::AudioBuffer<float>& buffer)
     graphicEQ.process (buffer);          // 9. 10밴드 Constant-Q 그래픽 EQ (+/-12dB)
     chorus.process (buffer);             // 10. Post-FX: LFO 딜레이 모듈레이션
     delay.process (buffer);              // 11. Post-FX: Time/Feedback/Damping/Mix
-    reverb.process (buffer);             // 12. Post-FX: Spring/Room 리버브
+    reverb.process (buffer);             // 12. Post-FX: Spring/Room/Hall/Plate 리버브
     powerAmp.process (buffer);           // 13. 파워 포화 + Presence 피킹 필터 + Sag 압축(튜브만)
     cabinet.process (buffer);            // 14. 컨볼루션 캐비닛 IR 적용 (스피커 시뮬레이션)
 }

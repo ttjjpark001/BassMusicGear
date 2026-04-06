@@ -9,15 +9,15 @@
 #include "UI/GraphicEQPanel.h"
 
 /**
- * @brief BassMusicGear 플러그인 에디터 (UI, Phase 4)
+ * @brief BassMusicGear 플러그인 에디터 (UI, Phase 5)
  *
  * **레이아웃** (위에서 아래 순서):
  * - **TunerDisplay**: 크로매틱 튜너 (상단 고정, 42px)
  *
  * - **Pre-FX 이펙터 블록** (앰프 앞단, 접기/펼치기 가능):
- *   - Overdrive: Drive, Tone, Blend
+ *   - Overdrive: Type(Tube/JFET/Fuzz), Drive, Tone, Blend
  *   - Octaver: Sub, Oct-Up, Dry
- *   - Envelope Filter: Sens, Reso
+ *   - Envelope Filter: Sens, Freq Min, Freq Max, Reso, Direction
  *
  * - **AmpPanel** (290px):
  *   - 앰프 모델 선택 ComboBox (5종)
@@ -29,6 +29,16 @@
  *     - American Vintage: Mid Position (250Hz ~ 3kHz 선택)
  *     - Italian Clean: VPF, VLE 노브
  *     - Modern Micro: Grunt, Attack 노브
+ *
+ * - **GraphicEQPanel** (접힘 36px / 펼침 220px):
+ *   - 10밴드 수직 슬라이더 (31Hz~16kHz, +/-12dB)
+ *   - EQ 프리셋 드롭다운 (Flat/Bass Boost/Scoop Mid/Presence/Vintage Warmth/Hi-Fi)
+ *   - FLAT 리셋 버튼
+ *
+ * - **Post-FX 이펙터 블록** (앰프 뒷단, 접기/펼치기 가능):
+ *   - Chorus: Rate, Depth, Mix
+ *   - Delay: Time, Feedback, Damp, Mix
+ *   - Reverb: Type(Spring/Room/Hall/Plate), Size, Decay, Mix
  *
  * - **CabinetSelector** (95px):
  *   - 내장 IR 선택 ComboBox (5종: 8x10 SVT / 4x10 JBL / 1x15 Vintage / 2x12 British / 2x10 Modern)
@@ -81,16 +91,14 @@ public:
 
 private:
     /**
-     * @brief Pre-FX 블록의 접힘/펼침 상태에 따라 필요한 전체 창 높이를 계산한다.
+     * @brief 모든 접기/펼치기 가능 블록의 현재 상태에 따라 필요한 전체 창 높이를 계산한다.
      *
-     * 각 Pre-FX 블록(Overdrive, Octaver, EnvelopeFilter)의 현재 상태를 읽어
-     * 총 높이를 예측하여 반환한다. 블록이 펼쳐지면 expandedHeight(130px),
-     * 접히면 collapsedHeight(36px)를 더한다.
+     * Pre-FX(Overdrive, Octaver, EnvelopeFilter), GraphicEQ, Post-FX(Chorus, Delay, Reverb)
+     * 블록의 현재 상태를 읽어 총 높이를 예측하여 반환한다.
+     * 블록이 펼쳐지면 expandedHeight, 접히면 collapsedHeight를 더한다.
      *
      * @return 필요한 창 높이 (픽셀)
-     * @note calculateNeededHeight()는 setSize() 호출 시점에 전체 레이아웃이
-     *       결정되어야 하므로, onExpandChange 콜백에서 호출되어
-     *       창 크기를 동적으로 조정한다.
+     * @note onExpandChange 콜백에서 호출되어 창 크기를 동적으로 조정한다.
      */
     int calculateNeededHeight() const;
 

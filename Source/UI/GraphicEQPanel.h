@@ -24,7 +24,8 @@
 class GraphicEQPanel : public juce::Component
 {
 public:
-    static constexpr int panelHeight = 200;
+    static constexpr int collapsedHeight = 36;
+    static constexpr int expandedHeight  = 220;
 
     GraphicEQPanel (juce::AudioProcessorValueTreeState& apvts);
     ~GraphicEQPanel() override;
@@ -32,21 +33,53 @@ public:
     void paint (juce::Graphics& g) override;
     void resized() override;
 
+    bool getExpanded() const { return expanded; }
+    void setExpanded (bool shouldBeExpanded);
+
+    std::function<void()> onExpandChange;
+
 private:
     juce::AudioProcessorValueTreeState& apvtsRef;
 
-    // ON/OFF toggle
+    // 접기(">") / 펼치기("v") 토글 버튼
+    // 클릭 시 sliders/labels/flatButton/presetCombo의 가시성을 토글하고
+    // onExpandChange 콜백을 호출하여 전체 에디터 높이를 재계산하도록 신호.
+    juce::TextButton expandButton;
+
+    // GraphicEQ ON/OFF 토글 버튼
+    // geq_enabled 파라미터에 바인딩되어 GraphicEQ 처리 활성/비활성 제어
     juce::ToggleButton enabledToggle;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> enabledAttachment;
 
-    // FLAT reset button
+    // EQ 프리셋 드롭다운
+    // "(Custom)", "Flat", "Bass Boost", "Scoop Mid", "Presence", "Vintage Warmth", "Hi-Fi"
+    // 사용자가 선택하면 applyPreset()을 호출하여 해당 곡선의 10밴드 값을 적용.
+    // 사용자가 슬라이더를 수동 조정하면 "(Custom)"으로 자동 리셋 (isApplyingPreset 플래그로 프리셋 적용 중은 무시).
+    juce::ComboBox presetCombo;
+    void applyPreset (int presetIndex);
+
+    // FLAT(전체 0dB) 리셋 버튼
+    // 모든 밴드를 0dB로 설정하고 presetCombo를 "Flat"으로 선택
     juce::TextButton flatButton;
 
-    // 10 band sliders
+    // 10밴드 수직 슬라이더 (31/63/125/250/500/1k/2k/4k/8k/16kHz)
+    // 각 슬라이더는 -12~+12dB 범위, 슬라이더 위에 dB 값 표시
+    // sliderAttachment를 통해 APVTS 파라미터에 동기화됨
     static constexpr int numBands = 10;
     juce::Slider sliders[numBands];
-    juce::Label  labels[numBands];
+    juce::Label  labels[numBands];  // 각 슬라이더 아래 주파수 라벨 (31, 63, 125, ... 16k)
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sliderAttachments[numBands];
+
+    // expanded: GraphicEQPanel의 접힘/펼침 상태
+    // 펼쳐진 상태(true)에서는 sliders/labels 표시, 접힌 상태(false)에서는 헤더만 표시
+    bool expanded = true;
+
+    // isApplyingPreset: 프리셋 적용 중 플래그
+    // applyPreset()가 각 슬라이더 값을 setValueNotifyingHost()로 변경할 때,
+    // 해당 변경이 각 슬라이더의 onValueChange 콜백을 트리거한다.
+    // 이 콜백에서 presetCombo를 "(Custom)"으로 되돌리는 것을 방지하기 위해
+    // onValueChange 내부에서 isApplyingPreset을 확인하여 프리셋 적용 중은 무시한다.
+    bool isApplyingPreset = false;
 
     static constexpr const char* bandParamIds[numBands] = {
         "geq_31", "geq_63", "geq_125", "geq_250", "geq_500",

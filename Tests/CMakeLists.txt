@@ -8,6 +8,9 @@ add_executable(BassMusicGear_Tests
     CompressorTest.cpp
     GraphicEQTest.cpp
     ReverbTest.cpp
+    BiAmpCrossoverTest.cpp
+    DIBlendTest.cpp
+    AmpVoicingTest.cpp
 )
 
 # Add DSP source files needed by tests (compiled separately from plugin target)
@@ -23,6 +26,9 @@ target_sources(BassMusicGear_Tests
         "${CMAKE_SOURCE_DIR}/Source/DSP/Effects/Chorus.cpp"
         "${CMAKE_SOURCE_DIR}/Source/DSP/Effects/Delay.cpp"
         "${CMAKE_SOURCE_DIR}/Source/DSP/Effects/Reverb.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/DSP/BiAmpCrossover.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/DSP/DIBlend.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/DSP/AmpVoicing.cpp"
         "${CMAKE_SOURCE_DIR}/Source/Models/AmpModelLibrary.cpp"
 )
 

@@ -127,6 +127,12 @@ target_sources(BassMusicGear
         Source/DSP/PowerAmp.cpp
         Source/DSP/Cabinet.h
         Source/DSP/Cabinet.cpp
+        Source/DSP/BiAmpCrossover.h
+        Source/DSP/BiAmpCrossover.cpp
+        Source/DSP/DIBlend.h
+        Source/DSP/DIBlend.cpp
+        Source/DSP/AmpVoicing.h
+        Source/DSP/AmpVoicing.cpp
         Source/DSP/SignalChain.h
         Source/DSP/SignalChain.cpp
         Source/UI/Knob.h
@@ -141,6 +147,10 @@ target_sources(BassMusicGear
         Source/UI/EffectBlock.cpp
         Source/UI/GraphicEQPanel.h
         Source/UI/GraphicEQPanel.cpp
+        Source/UI/BiAmpPanel.h
+        Source/UI/BiAmpPanel.cpp
+        Source/UI/DIBlendPanel.h
+        Source/UI/DIBlendPanel.cpp
         Source/Models/AmpModel.h
         Source/Models/AmpModelLibrary.h
         Source/Models/AmpModelLibrary.cpp

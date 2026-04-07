@@ -108,8 +108,8 @@ void Preamp::process (juce::AudioBuffer<float>& buffer)
 
     auto block = juce::dsp::AudioBlock<float> (buffer).getSingleChannelBlock (0);
 
-    // Class D Linear doesn't need oversampling (no nonlinearity)
-    if (currentType == PreampType::ClassDLinear)
+    // Class D Linear and SolidState Linear don't need oversampling (no nonlinearity)
+    if (currentType == PreampType::ClassDLinear || currentType == PreampType::SolidStateLinear)
     {
         processClassDLinear (block.getChannelPointer (0),
                              static_cast<size_t> (block.getNumSamples()),

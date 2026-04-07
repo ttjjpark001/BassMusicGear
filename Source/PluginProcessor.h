@@ -6,9 +6,12 @@
 /**
  * @brief BassMusicGear 플러그인 오디오 프로세서
  *
- * **신호 체인**: NoiseGate → Tuner(YIN) → Compressor(VCA) → Overdrive(Tube/JFET/Fuzz) → Octaver(YIN) → EnvelopeFilter(SVF) → Preamp(4xOS) → ToneStack → PowerAmp(Drive/Presence/Sag) → Cabinet(IR)
+ * **신호 체인**: NoiseGate → Tuner(YIN) → Compressor(VCA) → BiAmpCrossover(LR4)
+ *   → [HP: Overdrive → Octaver → EnvelopeFilter → Preamp(4xOS) → AmpVoicing → ToneStack
+ *        → GraphicEQ(10밴드) → Chorus → Delay → Reverb → PowerAmp(Drive/Presence/Sag)]
+ *   → Cabinet(IR) ↔ DIBlend(cleanDI) (IR Position에 따라 순서 동적 전환)
  *
- * **5종 앰프 모델**: American Vintage / Tweed Bass / British Stack / Modern Micro / Italian Clean
+ * **6종 앰프 모델**: American Vintage / Tweed Bass / British Stack / Modern Micro / Italian Clean / Origin Pure
  *
  * **APVTS 파라미터**:
  * - 앰프 모델 선택 (ComboBox)
@@ -152,7 +155,7 @@ private:
      * @brief APVTS 파라미터 레이아웃 생성 (정적 메서드)
      *
      * 모든 파라미터를 정의하고 기본값, 범위, 스텝을 설정한다.
-     * - amp_model: ComboBox (0~4)
+     * - amp_model: ComboBox (0~5, 6종 모델)
      * - input_gain, volume: 데시벨 슬라이더
      * - bass, mid, treble: 0~1 연속값
      * - drive, presence, sag: 0~1 연속값

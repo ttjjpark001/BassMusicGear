@@ -453,6 +453,37 @@ PluginProcessor::createParameterLayout()
         juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
 
     //--------------------------------------------------------------------------
+    // BiAmp Crossover
+    //--------------------------------------------------------------------------
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "biamp_on", 1 }, "Bi-Amp", false));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "crossover_freq", 1 }, "Crossover Freq",
+        juce::NormalisableRange<float> (60.0f, 500.0f, 1.0f, 0.5f), 200.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("Hz")));
+
+    //--------------------------------------------------------------------------
+    // DI Blend
+    //--------------------------------------------------------------------------
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "di_blend", 1 }, "DI Blend",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "clean_level", 1 }, "Clean Level",
+        juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { "processed_level", 1 }, "Processed Level",
+        juce::NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("dB")));
+
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "ir_position", 1 }, "IR Position", false));  // false=Post, true=Pre
+
+    //--------------------------------------------------------------------------
     // Reverb (Post-FX): Hall/Plate 타입 추가 (Spring, Room, Hall, Plate 4종)
     //--------------------------------------------------------------------------
     // 각 타입의 음향 특성:

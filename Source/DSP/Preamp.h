@@ -7,9 +7,9 @@
 /**
  * @brief 프리앰프: 모델별 입력 게인 스테이징 + 4배 오버샘플링 웨이브쉐이핑
  *
- * **신호 체인 위치**: 입력 → [Preamp(4x OS + 웨이브쉐이핑)] → ToneStack → PowerAmp
+ * **신호 체인 위치**: 입력 → [Preamp(4x OS)] → [AmpVoicing] → [ToneStack] → PowerAmp
  *
- * **3가지 프리앰프 타입**:
+ * **4가지 프리앰프 타입**:
  * 1. **Tube12AX7Cascade** (American Vintage, Tweed Bass, British Stack)
  *    - 비대칭 tanh 클리핑: 양의 반파보다 음의 반파를 약하게 누름
  *    - 짝수 고조파 강조 (tubelike warm 톤)
@@ -24,6 +24,10 @@
  *    - 선형 증폭, 웨이브쉐이핑 없음
  *    - 입력 게인과 출력 볼륨만 적용
  *    - 최소 왜곡, 깨끗한 톤
+ *
+ * 4. **SolidStateLinear** (Origin Pure)
+ *    - ClassDLinear와 동일한 선형 증폭 (웨이브쉐이핑 없음)
+ *    - 투명한 증폭을 위한 솔리드스테이트 경로
  *
  * **오버샘플링**:
  * - 4x 오버샘플링: 비선형 처리(tanh, clipping) 고조파로 인한 앨리어싱 제거
@@ -76,7 +80,7 @@ public:
     /**
      * @brief 프리앰프 타입을 설정한다.
      *
-     * @param type  PreampType (Tube12AX7Cascade, JFETParallel, ClassDLinear)
+     * @param type  PreampType (Tube12AX7Cascade, JFETParallel, ClassDLinear, SolidStateLinear)
      * @note [메인 스레드 전용] 앰프 모델 전환 시 호출된다.
      */
     void setPreampType (PreampType type);

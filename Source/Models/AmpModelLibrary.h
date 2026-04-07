@@ -4,7 +4,7 @@
 #include <array>
 
 /**
- * @brief 5종 앰프 모델 등록/조회 라이브러리
+ * @brief 6종 앰프 모델 등록/조회 라이브러리
  *
  * 모든 앰프 모델 정보를 정적으로 관리한다.
  * 모델별 ToneStack 타입, Preamp 타입, PowerAmp 타입, Sag 활성 여부 등을 조회할 수 있다.

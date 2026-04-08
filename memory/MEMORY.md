@@ -2,7 +2,7 @@
 
 ## Phase 진행 상태
 
-last_completed_phase: 5
+last_completed_phase: 6
 <!-- -1 = 아직 어떤 phase도 완료되지 않음 -->
 <!-- 0~9 = 해당 phase까지 완료됨 -->
 
@@ -16,7 +16,7 @@ last_completed_phase: 5
 | 3 | 튜너 + 컴프레서 | ✅ | 2026-03-28 |
 | 4 | Pre-FX | ✅ | 2026-04-02 |
 | 5 | 그래픽 EQ + Post-FX | ✅ | 2026-04-05 |
-| 6 | Bi-Amp + DI Blend | ☐ | — |
+| 6 | Bi-Amp + DI Blend | ✅ | 2026-04-08 |
 | 7 | 프리셋 시스템 | ☐ | — |
 | 8 | UI 완성 + 출력 | ☐ | — |
 | 9 | 오디오 설정 + 릴리즈 | ☐ | — |

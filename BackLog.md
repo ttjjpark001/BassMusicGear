@@ -4,31 +4,21 @@ BassMusicGear 구현 백로그.
 완료된 Phase들 중 아직 구현되지 않은 항목을 관리한다.
 미래 Phase의 항목은 포함하지 않는다.
 
-**마지막 갱신**: 2026-04-05 (Phase 5 완료 기준)
-**기준 Phase**: Phase 0 ~ Phase 5 (완료 기준)
-**총 미구현 항목**: 6건 (미구현 1건 / 부분 구현 2건 / 확인 필요 3건)
-
-> **Amp Voicing 처리 Phase 결정됨**: Phase 6에서 구현. PLAN.md Phase 6 CARRY 항목으로 등록 완료.
+**마지막 갱신**: 2026-04-08 (Phase 6 완료 기준)
+**기준 Phase**: Phase 0 ~ Phase 6 (완료 기준)
+**총 미구현 항목**: 5건 (미구현 0건 / 부분 구현 3건 / 확인 필요 2건)
 
 ---
 
 ## 미구현 항목
 
-### 설계 결함 — 앰프 음색 차별화 부재
-
-| 심각도 | 항목 | 원래 분류 | 처리 예정 Phase | 설명 |
-|--------|------|---------|--------------|------|
-| 미구현 | Amp Voicing 필터 부재 | Phase 2 설계 누락 | **Phase 6** (`AmpVoicingPlan.md` 참고, PLAN.md Phase 6 CARRY 등록 완료) | 현재 5종 앰프의 음색 차이가 거의 없음. 원인: ①Cabinet IR이 모든 앰프에 동일한 placeholder 사용 ②PowerAmp가 모든 앰프에 동일한 모듈 사용 ③앰프 고유의 고정 Voicing 필터가 없음 ④Tube12AX7 Preamp가 3종 앰프(American Vintage/Tweed Bass/British Stack)에서 동일하게 사용됨. 근본 해결은 각 앰프에 고정 Voicing 필터(AmpVoicing DSP 모듈)를 Preamp~ToneStack 사이에 추가하는 것. 세부 계획은 `AmpVoicingPlan.md` 참고. |
-| 부분 구현 | PowerAmp 앰프별 차별화 미적용 | Phase 2 P1 이월 | Amp Voicing 구현 이후 2차 작업 | 현재 PowerAmp는 모든 앰프에 동일한 모듈. 실제로는 6550(Ampeg)/6L6(Fender)/EL34(Orange)/Solid-State(Darkglass)/ClassD(Markbass)로 포화 특성이 다름. Amp Voicing 구현 완료 후 후속 작업으로 진행. |
-
----
-
 ### Phase 2 — 전체 앰프 모델
 
 | 심각도 | 항목 | 원래 분류 | 처리 예정 Phase | 설명 |
 |--------|------|---------|--------------|------|
+| 부분 구현 | PowerAmp 앰프별 포화 특성 차별화 | Phase 2 P1 이월 (BackLog 유지) | Phase 8 또는 후속 작업 | PowerAmp.h에 PowerAmpType 열거형(Tube6550/TubeEL34/SolidState/ClassD)이 선언되고 setPowerAmpType()으로 currentType이 저장되지만, PowerAmp::process() 내부에서 타입 분기가 없다. 모든 앰프 모델이 동일한 tanh 포화 곡선을 사용한다. Tube6550(부드러운 포화, 높은 헤드룸) / TubeEL34(빠른 포화, 낮은 헤드룸) / SolidState(경하드 클리핑) / ClassD(선형, 최소 왜곡)로 각각 다른 웨이브쉐이핑 곡선이 적용되어야 함. AmpVoicing으로 앰프 간 주파수 특성 차이는 확보됐으나 포화 특성 차이는 여전히 미구현 상태. |
 | 부분 구현 | 앰프 모델별 실제 캐비닛 IR 연결 | Phase 2 신규 | Phase 9 (릴리즈 준비) | AmpModelLibrary.cpp 주석에 American Vintage("ir_8x10_svt_wav", "임시 placeholder IR")와 Italian Clean("ir_1x15_vintage_wav", "Italian Clean 전용 IR 미확보, 1x15 Vintage로 대체")이 임시 IR 사용 중임을 명시. CabinetSelector.cpp 주석도 "8x10 SVT (placeholder)"로 표기. Phase 9에서 무료 IR 라이브러리(Torpedo WoS, Celestion Free, OpenIR 등)에서 실제 IR WAV를 취득하여 Resources/IR/에 추가하고 AmpModelLibrary.cpp의 defaultIRName 필드와 CabinetSelector.cpp의 switch 케이스를 교체해야 함. |
-| 확인 필요 | 앰프 모델별 UI 색상 테마 | P1 이월 (-> Phase 8) | Phase 8 | AmpModel.h에 themeColour 필드가 선언되어 있고 AmpModelLibrary.cpp에 5종 색상값(American Vintage 주황/Tweed 크림/British 진한주황/Modern 초록/Italian 파랑)이 등록되어 있으나, Source 전체에서 themeColour를 읽거나 LookAndFeel에 적용하는 코드가 없음. Phase 8 CARRY로 처리 예정. |
+| 확인 필요 | 앰프 모델별 UI 색상 테마 전체 적용 | P1 이월 (-> Phase 8) | Phase 8 | AmpPanel::paint()에서 themeColour를 섹션 라벨 텍스트 색상에 적용하도록 Phase 6에서 부분 구현됨. 그러나 창 배경, 노브 테두리, 탭 강조색 등 전체 LookAndFeel 레벨의 테마 적용은 아직 없음. Phase 8에서 VUMeter/SignalChainView 등 전체 UI 완성 시 LookAndFeel에 themeColour를 연동해야 함. Phase 8 CARRY로 처리 예정. |
 
 ---
 
@@ -44,7 +34,7 @@ BassMusicGear 구현 백로그.
 
 | 심각도 | 항목 | 원래 분류 | 처리 예정 Phase | 설명 |
 |--------|------|---------|--------------|------|
-| 확인 필요 | Delay BPM Sync | P1 이월 (-> Phase 8) | Phase 8 | Delay.h 주석에 "BPM 싱크 추가 예정 (Phase 8)"으로 명시. 현재 delay_time 노브(ms 단위)만 존재하고 BPM/박자 단위 sync 기능 없음. Phase 8에서 Delay EffectBlock에 BPM Sync 토글 및 음표 단위 선택 ComboBox를 추가해야 함. |
+| 부분 구현 | Delay BPM Sync | P1 이월 (Phase 5 -> Phase 6 -> Phase 8) | Phase 8 | Delay.h 주석에 "BPM 싱크 추가 예정 (Phase 8)"으로 명시. Phase 5에서 P1으로 이월, Phase 6 CARRY로 재등록됐으나 구현되지 않음. 현재 delay_time 노브(ms 단위)만 존재하고 BPM/박자 단위 sync 기능 없음. Phase 8에서 Delay EffectBlock에 BPM Sync 토글 및 음표 단위 선택 ComboBox를 추가해야 함. |
 
 ---
 
@@ -52,9 +42,9 @@ BassMusicGear 구현 백로그.
 
 소스 코드에서 발견된 미해결 주석 목록.
 
-| 파일 | 줄 | 내용 |
-|------|---|------|
-| (없음) | — | — |
+| 파일 | 내용 |
+|------|------|
+| Source/DSP/Effects/Delay.h (23번째 줄 주석) | `개선 (P1): BPM 싱크 추가 예정 (Phase 8)` |
 
 ---
 
@@ -70,3 +60,4 @@ BassMusicGear 구현 백로그.
 | Overdrive 타입 선택 UI (od_type) | Phase 4 구현 누락 | Phase 5 | 2026-04-05 |
 | EnvelopeFilter ef_direction / ef_freq_min / ef_freq_max UI 노출 | Phase 4 이월 (-> Phase 5 CARRY) | Phase 5 | 2026-04-05 |
 | Octaver Oct-Up 음질 개선 | Phase 4 P1 이월 (-> Phase 5 CARRY) | Phase 5 | 2026-04-05 |
+| Amp Voicing 필터 부재 (5종 앰프 음색 차별화) | Phase 2 설계 누락 (-> Phase 6 CARRY) | Phase 6 | 2026-04-08 |

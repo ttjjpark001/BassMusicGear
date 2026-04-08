@@ -27,6 +27,8 @@ public:
 
     /**
      * @brief DSP 처리 준비 (내부 상태 없음).
+     *
+     * @note [오디오 스레드] prepareToPlay() 중 호출된다.
      */
     void prepare (const juce::dsp::ProcessSpec& spec);
 
@@ -54,11 +56,13 @@ public:
      * @param cleanLevel        클린 신호 레벨 트림 (-12 ~ +12 dB)
      * @param processedLevel    처리 신호 레벨 트림 (-12 ~ +12 dB)
      * @param irPosition        Cabinet 위치 (0=Post-IR, 1=Pre-IR)
+     * @param enabled           ON/OFF (nullptr이면 항상 ON). 기본값 nullptr.
      */
     void setParameterPointers (std::atomic<float>* blend,
                                std::atomic<float>* cleanLevel,
                                std::atomic<float>* processedLevel,
-                               std::atomic<float>* irPosition);
+                               std::atomic<float>* irPosition,
+                               std::atomic<float>* enabled = nullptr);
 
     /**
      * @brief 현재 IR Position(Cabinet 위치)를 반환한다.
@@ -69,6 +73,7 @@ public:
     int getIRPosition() const;
 
 private:
+    std::atomic<float>* enabledParam       = nullptr;
     std::atomic<float>* blendParam         = nullptr;
     std::atomic<float>* cleanLevelParam    = nullptr;
     std::atomic<float>* processedLevelParam = nullptr;

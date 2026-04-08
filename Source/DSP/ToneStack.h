@@ -31,8 +31,8 @@
  *
  * 5. **MarkbassFourBand** (Italian Clean, Markbass 4-band): 4개 고정주파수 + VPF/VLE
  *    - 40/360/800/10kHz 각각 독립 바이쿼드 (Constant-Q 피킹)
- *    - VPF(Vintage Presence Filter): 35Hz 저셸프 + 380Hz 노치 + 10kHz 고셸프 (3필터 직렬)
- *    - VLE(Vintage Loudness Enhance): 상태변수 로우패스 (20kHz ~ 4kHz)
+ *    - VPF(Variable Pre-shape Filter): 35Hz 저셸프 + 380Hz 노치 + 10kHz 고셸프 (3필터 직렬)
+ *    - VLE(Vintage Loudspeaker Emulator): 상태변수 로우패스 (20kHz ~ 4kHz)
  *
  * **스레드 안전성**:
  * - 계수 계산: 메인 스레드 only (updateCoefficients, updateMarkbassExtras, updateModernExtras)
@@ -97,14 +97,14 @@ public:
     /**
      * @brief Italian Clean(MarkbassFourBand) 톤스택 전용: VPF/VLE 계수 업데이트
      *
-     * **VPF (Vintage Presence Filter)**:
+     * **VPF (Variable Pre-shape Filter)**:
      * - 3개 필터의 합산으로 구현되는 멀티밴드 부스트
      * - ① 35Hz 로우셸프 부스트
      * - ② 380Hz 피킹 컷 (노치)
      * - ③ 10kHz 하이셸프 부스트
      * - 모든 필터의 깊이가 VPF 노브 값(0~1)에 선형 비례 (0~12dB)
      *
-     * **VLE (Vintage Loudness Enhance)**:
+     * **VLE (Vintage Loudspeaker Emulator)**:
      * - StateVariableTPTFilter 로우패스, 6dB/oct
      * - 컷오프 주파수: 0%(노브) = 20kHz (전대역 통과), 100% = 4kHz (저음만 강조)
      *
@@ -248,7 +248,7 @@ private:
     int activeFilterCount = 3;                          // 현재 활성 필터 개수
 
     // --- VLE 필터 (Italian Clean 전용: 상태변수 로우패스) ---
-    // Markbass VLE(Vintage Loudness Enhance)는 StateVariableTPTFilter로 구현
+    // Markbass VLE(Vintage Loudspeaker Emulator)는 StateVariableTPTFilter로 구현
     // (6dB/oct 기울기, 공명 없음)
     juce::dsp::StateVariableTPTFilter<float> vleFilter;
     bool vleActive = false;                     // MarkbassFourBand일 때만 활성

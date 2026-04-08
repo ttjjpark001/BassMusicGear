@@ -17,7 +17,7 @@
  * - **Tweed Bass** (TMB 톤스택): 특화 노브 없음 (공통만)
  * - **British Stack** (James 톤스택): 특화 노브 없음
  * - **Modern Micro** (BaxandallGrunt 톤스택): Grunt(깊이), Attack(빠르기) 노브
- * - **Italian Clean** (MarkbassFourBand 톤스택): VPF(고음 부스트), VLE(저음 필터) 노브
+ * - **Italian Clean** (MarkbassFourBand 톤스택): VPF(미드 스쿱), VLE(고역 롤오프) 노브
  * - **모든 튜브 모델**: Sag 노브 (출력 트랜스포머 새깅 시뮬레이션)
  *
  * APVTS 파라미터 변경 리스너로 동작하여, 모델이 바뀔 때 레이아웃을 자동 갱신한다.
@@ -47,7 +47,7 @@ private:
      * 앰프 모델이 바뀌면 모든 노브 가시성을 갱신하고 레이아웃을 재계산한다.
      *
      * @param parameterID  변경된 파라미터 ID ("amp_model" 확인)
-     * @param newValue     새 모델 인덱스 (0~4)
+     * @param newValue     새 모델 인덱스 (0~5)
      * @note [메인 스레드] MessageManager::callAsync로 큐잉되어 UI 스레드에서 실행된다.
      */
     void parameterChanged (const juce::String& parameterID, float newValue) override;
@@ -85,8 +85,8 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> midPositionAttachment;
 
     // --- Italian Clean (MarkbassFourBand) 전용 ---
-    Knob vpfKnob;              // VPF (Vintage Presence Filter) 부스트 (0 ~ 100%)
-    Knob vleKnob;              // VLE (Vintage Loudness Enhance) 필터 깊이 (0 ~ 100%)
+    Knob vpfKnob;              // VPF (Variable Pre-shape Filter) 미드 스쿱 깊이 (0 ~ 100%)
+    Knob vleKnob;              // VLE (Vintage Loudspeaker Emulator) 고역 롤오프 깊이 (0 ~ 100%)
 
     // --- Modern Micro (BaxandallGrunt) 전용 ---
     Knob gruntKnob;            // 왜곡 깊이 (0 ~ 100%)

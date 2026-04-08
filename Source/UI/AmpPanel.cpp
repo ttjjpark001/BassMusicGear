@@ -1,6 +1,12 @@
-// 앰프 모델별 노브 및 컨트롤을 초기화한다.
-// 각 Knob은 생성 시점에 APVTS 파라미터에 자동 바인딩되어
-// UI와 오디오 스레드 간 값 동기화가 이루어진다.
+/**
+ * @brief AmpPanel 생성자: 앰프 모델별 톤스택 및 드라이브 노브를 초기화한다.
+ *
+ * 각 Knob은 생성 시점에 APVTS 파라미터에 자동 바인딩되어
+ * UI 변경 ↔ 오디오 스레드 간 값 동기화가 이루어진다.
+ *
+ * @param apvts  AudioProcessorValueTreeState 참조
+ * @note [메인 스레드] PluginEditor 생성 시 호출됨
+ */
 #include "AmpPanel.h"
 
 AmpPanel::AmpPanel (juce::AudioProcessorValueTreeState& apvts)
@@ -19,17 +25,18 @@ AmpPanel::AmpPanel (juce::AudioProcessorValueTreeState& apvts)
       attackKnob    ("Attack",     "attack",     apvts)
 {
     // --- 앰프 모델 선택 콤보박스 초기화 ---
-    // AmpModelLibrary에서 모든 모델 이름을 가져와 ComboBox에 추가한다.
+    // AmpModelLibrary::getModelNames()에서 6종 앰프 이름 배열을 가져와 추가
     // ComboBox 항목 ID는 1부터 시작 (JUCE 관례: 0은 예약)
     auto names = AmpModelLibrary::getModelNames();
     for (int i = 0; i < names.size(); ++i)
         modelCombo.addItem (names[i], i + 1);
-    modelCombo.setSelectedId (2);  // ID 2 = "Tweed Bass" (인덱스 1)
+    modelCombo.setSelectedId (2);  // ID 2 = "Tweed Bass" (인덱스 1) 기본값
     addAndMakeVisible (modelCombo);
     modelAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
         apvts, "amp_model", modelCombo);
 
-    // --- 공통 노브 추가 (모든 앰프에서 보임) ---
+    // --- 공통 노브 (모든 앰프 모델에서 보임) ---
+    // Input Gain(입력 게인) + Volume(마스터 볼륨) + Bass/Mid/Treble(톤스택) + Drive + Presence(파워앰프)
     addAndMakeVisible (inputGainKnob);
     addAndMakeVisible (volumeKnob);
     addAndMakeVisible (bassKnob);
@@ -38,11 +45,14 @@ AmpPanel::AmpPanel (juce::AudioProcessorValueTreeState& apvts)
     addAndMakeVisible (driveKnob);
     addAndMakeVisible (presenceKnob);
 
-    // --- Sag 노브 추가 (튜브 모델에서만 후에 표시) ---
+    // --- Sag 노브 ---
+    // 튜브 앰프(American Vintage, Tweed Bass, British Stack)에서만 표시
+    // ClassD/SolidState 앰프에서는 sagEnabled=false이므로 숨김
     addAndMakeVisible (sagKnob);
 
-    // --- American Vintage (Baxandall) 전용: Mid Position 콤보박스 ---
-    // Baxandall 톤스택의 미드 밴드 중심주파수를 선택할 수 있게 한다.
+    // --- American Vintage 전용: Mid Position 콤보박스 ---
+    // Baxandall 톤스택의 미드 밴드 중심주파수를 250Hz~3kHz에서 선택
+    // IIR 계수 재계산이 발생하므로 선택 변경 시 updateMidPosition() 호출
     midPositionCombo.addItem ("250 Hz",  1);
     midPositionCombo.addItem ("500 Hz",  2);
     midPositionCombo.addItem ("800 Hz",  3);
@@ -58,44 +68,51 @@ AmpPanel::AmpPanel (juce::AudioProcessorValueTreeState& apvts)
     midPositionLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (midPositionLabel);
 
-    // --- Italian Clean (MarkbassFourBand) 전용: VPF / VLE ---
-    // VPF: 고음 강조 필터, VLE: 저음 필터
+    // --- Italian Clean 전용: VPF / VLE ---
+    // VPF(Variable Pre-shape Filter): 미드 스쿱 (380Hz 노치 + 35Hz/10kHz 부스트)
+    // VLE(Vintage Loudspeaker Emulator): 가변 로우패스 고역 롤오프
+    // 독립적으로 작동, 세부 사항은 ToneStack::updateMarkbassExtras() 참조
     addAndMakeVisible (vpfKnob);
     addAndMakeVisible (vleKnob);
 
-    // --- Modern Micro (BaxandallGrunt) 전용: Grunt / Attack ---
-    // Grunt: 왜곡 깊이, Attack: 반응 속도
+    // --- Modern Micro 전용: Grunt / Attack ---
+    // Grunt: 비선형 왜곡 깊이, Attack: 반응 속도 (BaxandallGrunt 특화)
     addAndMakeVisible (gruntKnob);
     addAndMakeVisible (attackKnob);
 
-    // --- amp_model 파라미터 변경 리스너 등록 ---
-    // 사용자가 모델을 변경하면 parameterChanged() 콜백이 호출되어
-    // 모든 노브의 가시성을 동적으로 갱신한다.
+    // --- amp_model 파라미터 리스너 등록 ---
+    // 사용자가 모델 콤보박스를 선택하면 parameterChanged() 콜백 실행
+    // → 모든 노브의 가시성을 동적으로 업데이트 (모델별 UI 재구성)
     apvts.addParameterListener ("amp_model", this);
 
-    // 초기 가시성 설정 (Tweed Bass 기본값에 맞춤)
+    // 초기 가시성 설정 (Tweed Bass 모델 기본값에 맞춰 노브 표시/숨김)
     updateVisibility();
 }
 
 AmpPanel::~AmpPanel()
 {
-    // 소멸 시 파라미터 리스너 제거하여 dangling 포인터 방지
+    // --- 파라미터 리스너 제거 (dangling 포인터 방지) ---
+    // AmpPanel 소멸 후 APVTS의 콜백이 실행되지 않도록 사전 제거
     apvtsRef.removeParameterListener ("amp_model", this);
 }
 
 /**
  * @brief APVTS 파라미터 변경 콜백 (리스너 인터페이스)
  *
- * "amp_model" 파라미터가 바뀌면 호출된다.
- * 메인 스레드(메시지 큐)에서 가시성 갱신 작업을 스케줄한다.
+ * "amp_model" 파라미터가 바뀌면 호출되어 가시성을 동적으로 갱신한다.
+ * 메인 스레드(메시지 큐)에서 비동기로 updateVisibility() 실행.
  *
  * @param parameterID  변경된 파라미터 ID ("amp_model" 확인)
- * @param newValue     미사용 (AmpPanel은 APVTS에서 직접 값을 읽음)
+ * @param newValue     미사용 (APVTS에서 직접 모델 ID를 읽음)
+ * @note [메인 스레드] MessageManager::callAsync로 콜백 스케줄
  */
 void AmpPanel::parameterChanged (const juce::String& parameterID, float /*newValue*/)
 {
     if (parameterID == "amp_model")
     {
+        // 모델 전환 시 UI 색상 변경 (themeColour 적용)
+        repaint();
+
         // SafePointer: AmpPanel이 소멸된 후 비동기 콜백이 실행되더라도
         // dangling pointer 역참조를 방지한다.
         auto safeThis = juce::Component::SafePointer<AmpPanel> (this);
@@ -128,8 +145,9 @@ void AmpPanel::updateVisibility()
     const int modelIndex = static_cast<int> (apvtsRef.getRawParameterValue ("amp_model")->load());
     const auto& model = AmpModelLibrary::getModel (modelIndex);
 
-    // --- Sag 노브: 튜브 앰프만 표시 ---
-    // Tube6550, TubeEL34 모델에서만 출력 트랜스 새깅을 시뮬레이션할 수 있다.
+    // --- Sag 노브: sagEnabled=true인 모델만 표시 ---
+    // 튜브 파워앰프 모델(Tube6550=American Vintage/Tweed, TubeEL34=British)에서만
+    // 출력 트랜스 전압 새깅을 시뮬레이션한다. ClassD/SolidState 모델은 숨김.
     sagKnob.setVisible (model.sagEnabled);
 
     // --- Mid Position 콤보박스: American Vintage (Baxandall) 전용 ---
@@ -139,7 +157,7 @@ void AmpPanel::updateVisibility()
     midPositionLabel.setVisible (isAmerican);
 
     // --- VPF/VLE 노브: Italian Clean (MarkbassFourBand) 전용 ---
-    // Markbass 스타일 4-band EQ의 VPF(고음 필터)와 VLE(저음 필터)
+    // VPF(미드 스쿱 필터)와 VLE(고역 롤오프 로우패스)
     bool isItalian = (model.toneStack == ToneStackType::MarkbassFourBand);
     vpfKnob.setVisible (isItalian);
     vleKnob.setVisible (isItalian);
@@ -165,8 +183,10 @@ void AmpPanel::paint (juce::Graphics& g)
     g.setColour (juce::Colour (0xff222244));
     g.fillRoundedRectangle (getLocalBounds().toFloat(), 6.0f);
 
-    // 섹션 라벨: 주황색 텍스트 (14pt)
-    g.setColour (juce::Colour (0xffff8800));
+    // 섹션 라벨: 현재 앰프 모델의 themeColour 적용
+    const int modelIndex = static_cast<int> (apvtsRef.getRawParameterValue ("amp_model")->load());
+    const auto& model = AmpModelLibrary::getModel (modelIndex);
+    g.setColour (model.themeColour);
     g.setFont (juce::FontOptions (14.0f));
 
     // 신호 체인 3개 섹션 라벨

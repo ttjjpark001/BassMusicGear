@@ -57,6 +57,7 @@ private:
      *       파일 I/O 없이 BinaryData에서 직접 로드하므로 안전하다.
      */
     void loadSelectedIR();
+    void openIRFileChooser();   // 커스텀 IR 파일 브라우저 열기
 
     juce::AudioProcessorValueTreeState& apvtsRef;   // APVTS 참조
     PluginProcessor& processorRef;                  // SignalChain 접근용
@@ -64,6 +65,10 @@ private:
     // --- IR 선택 ComboBox ---
     juce::ComboBox irCombo;     // 5종 내장 IR 선택
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> irAttachment;
+
+    // --- 커스텀 IR 로드 버튼 ---
+    juce::TextButton loadIRButton { "Load IR..." };
+    std::unique_ptr<juce::FileChooser> fileChooser;
 
     // --- Bypass 토글 ---
     juce::ToggleButton bypassButton { "Bypass" };   // Cabinet Convolution 우회

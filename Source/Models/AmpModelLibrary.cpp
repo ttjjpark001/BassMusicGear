@@ -1,21 +1,23 @@
 #include "AmpModelLibrary.h"
 
 /**
- * 6종 앰프 모델 정적 레지스트리
+ * @brief 6종 앰프 모델 정적 레지스트리
  *
  * 각 모델은 다음을 조합하여 클래식 베이스 앰프의 음색 프로필을 재현한다:
  * - ToneStackType: 사용자 조작 가능한 EQ 컨트롤 (TMB/Baxandall/James/VPF-VLE 등)
- * - PreampType: 게인 스테이징 웨이브쉐이핑 특성 (Tube vs JFET vs Class D)
- * - PowerAmpType: 최종 포화 곡선 및 Sag 시뮬레이션 (Tube vs SolidState vs Class D)
- * - voicingBands[3]: 고정된 Voicing 필터 (사용자 조작 불가)
+ * - PreampType: 게인 스테이징 웨이브쉐이핑 특성 (Tube vs JFET vs ClassD)
+ * - PowerAmpType: 최종 포화 곡선 및 Sag 시뮬레이션 (Tube vs SolidState vs ClassD)
+ * - voicingBands[3]: 고정된 Voicing 필터 (사용자 조작 불가, 앰프 모델 선택 시 자동 적용)
  * - defaultIRName: 기본 캐비닛 IR (BinaryData 변수명)
- * - themeColour: UI 시각적 피드백
+ * - themeColour: UI 시각적 피드백 (색상으로 앰프 구분)
  *
- * 앰프 모델 전환(UI 콤보박스):
- * 1. UI에서 모델 선택 → PluginProcessor가 ampVoicing.setModel(id) 호출
- * 2. AmpVoicing::setModel() → AmpModelLibrary::getModel(id) 읽음
- * 3. voicingBands의 모든 필터 계수 재계산 → atomic으로 오디오 스레드에 전달
- * 4. 다음 processBlock()에서 새 Voicing 필터 적용 시작
+ * **앰프 모델 전환 흐름**:
+ * 1. PluginEditor: UI 콤보박스에서 모델 선택
+ * 2. PluginProcessor: amp_model 파라미터 변경 → updateCoefficientsFromMainThread()
+ * 3. SignalChain::setAmpModel(): ampVoicing.setModel(id) 호출
+ * 4. AmpVoicing: AmpModelLibrary::getModel(id)에서 voicingBands 읽음
+ * 5. 바이쿼드 계수 재계산 후 atomic 포인터로 오디오 스레드에 swap
+ * 6. 다음 processBlock()에서 새 Voicing 필터 적용 시작
  */
 const std::array<AmpModel, AmpModelLibrary::numModels> AmpModelLibrary::models = {{
     {
@@ -28,12 +30,12 @@ const std::array<AmpModel, AmpModelLibrary::numModels> AmpModelLibrary::models =
         "ir_8x10_svt_wav",                  // 8x10 SVT 캐비닛 IR
         juce::Colour (0xffff8800),          // UI 테마: 주황색 (Ampeg 브랜드)
         // Voicing: Ampeg SVT 고정 특성 (사용자 조작 불가)
-        // — 저역 셸빙 80Hz +3dB: 따뜻한 하단부 강조 (풍성한 저역)
-        // — 피킹 300Hz +2dB Q=0.8: 미드레인지 프레젠스 (근육감)
-        // — 피킹 1500Hz -2dB Q=1.2: 어퍼-미드 스쿱 (중간음 경감)
-        {{ { 80.0f, 3.0f, 0.707f, FilterType::LowShelf },
-           { 300.0f, 2.0f, 0.8f, FilterType::Peak },
-           { 1500.0f, -2.0f, 1.2f, FilterType::Peak } }}
+        // — 저역 셸빙 80Hz +6dB: 따뜻한 하단부 강조 (풍성한 저역)
+        // — 피킹 300Hz +3dB Q=0.8: 미드레인지 프레젠스 (근육감)
+        // — 피킹 1500Hz -4dB Q=1.2: 어퍼-미드 스쿱 (중간음 경감)
+        {{ { 80.0f, 6.0f, 0.707f, FilterType::LowShelf },
+           { 300.0f, 3.0f, 0.8f, FilterType::Peak },
+           { 1500.0f, -4.0f, 1.2f, FilterType::Peak } }}
     },
     {
         AmpModelId::TweedBass,
@@ -45,12 +47,12 @@ const std::array<AmpModel, AmpModelLibrary::numModels> AmpModelLibrary::models =
         "ir_4x10_jbl_wav",                  // 4x10 JBL 스피커 (Bassman 5F6-A 원조)
         juce::Colour (0xfff5e6c8),          // UI 테마: 크림색 (빈티지 톤)
         // Voicing: Fender Bassman 5F6-A 고정 특성
-        // — 저역 셸빙 60Hz +2dB: 깊은 베이스 따뜻함 (저음 강조)
-        // — 피킹 600Hz -3dB Q=0.7: 미드 스쿱 (뭉툭한 미드레인지)
-        // — 고역 셸빙 5000Hz -2dB: 고역 롤오프 (빈티지 부드러움)
-        {{ { 60.0f, 2.0f, 0.707f, FilterType::LowShelf },
-           { 600.0f, -3.0f, 0.7f, FilterType::Peak },
-           { 5000.0f, -2.0f, 0.707f, FilterType::HighShelf } }}
+        // — 저역 셸빙 60Hz +4dB: 깊은 베이스 따뜻함 (저음 강조)
+        // — 피킹 600Hz -6dB Q=0.7: 미드 스쿱 (뭉툭한 미드레인지)
+        // — 고역 셸빙 5000Hz -4dB: 고역 롤오프 (빈티지 부드러움)
+        {{ { 60.0f, 4.0f, 0.707f, FilterType::LowShelf },
+           { 600.0f, -6.0f, 0.7f, FilterType::Peak },
+           { 5000.0f, -4.0f, 0.707f, FilterType::HighShelf } }}
     },
     {
         AmpModelId::BritishStack,
@@ -63,11 +65,11 @@ const std::array<AmpModel, AmpModelLibrary::numModels> AmpModelLibrary::models =
         juce::Colour (0xffff6600),          // UI 테마: 진한 주황색 (Orange 브랜드)
         // Voicing: Orange AD200 고정 특성 (공격적/tight)
         // — 고역통과 60Hz Q=0.7: Tight 저음 (서브베이스 제거, 타이트한 어택)
-        // — 피킹 500Hz +3dB Q=1.0: 공격적 미드레인지 (협대역 그로울)
-        // — 피킹 2000Hz +2dB Q=1.5: 어퍼-미드 바이트 (선명한 톤)
+        // — 피킹 500Hz +6dB Q=1.0: 공격적 미드레인지 (협대역 그로울)
+        // — 피킹 2000Hz +4dB Q=1.5: 어퍼-미드 바이트 (선명한 톤)
         {{ { 60.0f, 0.0f, 0.7f, FilterType::HighPass },
-           { 500.0f, 3.0f, 1.0f, FilterType::Peak },
-           { 2000.0f, 2.0f, 1.5f, FilterType::Peak } }}
+           { 500.0f, 6.0f, 1.0f, FilterType::Peak },
+           { 2000.0f, 4.0f, 1.5f, FilterType::Peak } }}
     },
     {
         AmpModelId::ModernMicro,
@@ -80,11 +82,11 @@ const std::array<AmpModel, AmpModelLibrary::numModels> AmpModelLibrary::models =
         juce::Colour (0xff00cc66),          // UI 테마: 초록색 (현대식 이미지)
         // Voicing: Darkglass B3K 고정 특성 (극도로 공격적)
         // — 고역통과 80Hz Q=0.7: Tight 저음 (서브베이스 제거)
-        // — 피킹 900Hz +2dB Q=1.2: Growl 주파수 (저음 그라인드)
-        // — 피킹 3000Hz +4dB Q=1.5: 공격적 클래리티/그라인드 (선명한 어택)
+        // — 피킹 900Hz +4dB Q=1.2: Growl 주파수 (저음 그라인드)
+        // — 피킹 3000Hz +8dB Q=1.5: 공격적 클래리티/그라인드 (선명한 어택)
         {{ { 80.0f, 0.0f, 0.7f, FilterType::HighPass },
-           { 900.0f, 2.0f, 1.2f, FilterType::Peak },
-           { 3000.0f, 4.0f, 1.5f, FilterType::Peak } }}
+           { 900.0f, 4.0f, 1.2f, FilterType::Peak },
+           { 3000.0f, 8.0f, 1.5f, FilterType::Peak } }}
     },
     {
         AmpModelId::ItalianClean,
@@ -97,11 +99,11 @@ const std::array<AmpModel, AmpModelLibrary::numModels> AmpModelLibrary::models =
         juce::Colour (0xff3399ff),          // UI 테마: 파란색 (모던 클린)
         // Voicing: Markbass Little Mark III 고정 특성 (의도적으로 플랫)
         // — V1 Flat: 처리 없음 (기울기 중립)
-        // — V2 피킹 6000Hz +1.5dB Q=1.5: 미세한 고역 클래리티 (선명도)
+        // — V2 피킹 6000Hz +3dB Q=1.5: 미세한 고역 클래리티 (선명도)
         // — V3 Flat: 처리 없음
         // (Voicing이 최소이므로 VPF/VLE 필터가 음색의 주요 차별점)
         {{ { 1000.0f, 0.0f, 1.0f, FilterType::Flat },
-           { 6000.0f, 1.5f, 1.5f, FilterType::Peak },
+           { 6000.0f, 3.0f, 1.5f, FilterType::Peak },
            { 1000.0f, 0.0f, 1.0f, FilterType::Flat } }}
     },
     {

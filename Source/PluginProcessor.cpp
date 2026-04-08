@@ -9,7 +9,13 @@ PluginProcessor::PluginProcessor()
                           .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
+    // --- APVTS 파라미터를 SignalChain 각 블록에 연결 ---
+    // 이후 processBlock()에서 atomic으로 파라미터 값을 읽을 수 있음
     signalChain.connectParameters (apvts);
+
+    // --- 메인 스레드 30Hz 타이머 시작 ---
+    // DSP 계수 재계산(FIR/IIR 필터 계수 갱신)을 메인 스레드에서 수행
+    // processBlock() 중에는 원자적 swap으로 오디오 스레드에 전달됨
     startTimerHz (30);
 }
 
@@ -28,12 +34,22 @@ void PluginProcessor::changeProgramName (int, const juce::String&) {}
 //==============================================================================
 void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    // --- DSP 처리 스펙 정의 ---
+    // 신호 체인은 모노로 처리 (입력 모노, 출력 스테레오는 processBlock에서 처리)
     juce::dsp::ProcessSpec spec;
     spec.sampleRate       = sampleRate;
     spec.maximumBlockSize = static_cast<juce::uint32> (samplesPerBlock);
     spec.numChannels      = 1;
 
+    // --- SignalChain 초기화 ---
+    // 모든 DSP 모듈(필터, 컨볼루션, 오버샘플링 등) 초기화
+    // 버퍼 할당, 필터 계수 계산 등이 이루어짐
     signalChain.prepare (spec);
+
+    // --- Plugin Delay Compensation(PDC) 지연 시간 보고 ---
+    // Convolution(Cabinet) + Oversampling(Preamp, Overdrive) 누적 지연 시간을
+    // setLatencySamples()로 DAW에 보고
+    // DAW가 이 값을 사용해 다른 트랙과 타이밍을 자동 맞춤
     setLatencySamples (signalChain.getTotalLatencyInSamples());
 }
 
@@ -59,13 +75,22 @@ bool PluginProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                      juce::MidiBuffer& /*midiMessages*/)
 {
+    // --- Denormal 방지 (매우 작은 값의 부동소수점 연산 최적화) ---
     juce::ScopedNoDenormals noDenormals;
 
+    // --- 출력 채널 초기화 ---
+    // 입력보다 출력이 많은 경우 (예: 모노 입력 → 스테레오 출력)
+    // 여분의 출력 채널을 0으로 클리어
     for (int ch = getTotalNumInputChannels(); ch < getTotalNumOutputChannels(); ++ch)
         buffer.clear (ch, 0, buffer.getNumSamples());
 
+    // --- 신호 체인 처리 (모노) ---
+    // Gate → Tuner → Compressor → BiAmp Crossover → Pre-FX → Amp → Post-FX → PowerAmp → Cabinet → DIBlend
     signalChain.process (buffer);
 
+    // --- 모노 → 스테레오 확장 ---
+    // 처리된 모노 신호(버퍼 채널 0)을 채널 1(우측)에도 복사
+    // 스테레오 출력 플러그인 형식 준수
     if (buffer.getNumChannels() > 1)
         buffer.copyFrom (1, 0, buffer, 0, 0, buffer.getNumSamples());
 }
@@ -73,6 +98,10 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 //==============================================================================
 void PluginProcessor::timerCallback()
 {
+    // --- 메인 스레드 30Hz 타이머 콜백 ---
+    // 필터 계수, 톤스택 파라미터, 앰프 모델 전환 등을 처리
+    // 오디오 스레드가 아닌 메인 스레드에서 실행되므로 계산 시간에 자유로움
+    // 계산된 계수는 atomic 또는 FIFO로 오디오 스레드에 전달됨
     signalChain.updateCoefficientsFromMainThread (apvts);
 }
 
@@ -466,6 +495,9 @@ PluginProcessor::createParameterLayout()
     //--------------------------------------------------------------------------
     // DI Blend
     //--------------------------------------------------------------------------
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "di_blend_on", 1 }, "DI Blend On", false));  // OFF: processed만 출력
+
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "di_blend", 1 }, "DI Blend",
         juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));

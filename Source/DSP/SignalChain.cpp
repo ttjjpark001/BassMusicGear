@@ -6,30 +6,31 @@ void SignalChain::prepare (const juce::dsp::ProcessSpec& spec)
     juce::dsp::ProcessSpec monoSpec = spec;
     monoSpec.numChannels = 1;
 
-    // --- Signal chain order ---
+    // --- 신호 체인 초기화 (순서는 processBlock()의 처리 순서와 일치) ---
     noiseGate.prepare (monoSpec);
     tuner.prepare (monoSpec);
     compressor.prepare (monoSpec);
-    biAmpCrossover.prepare (monoSpec);
+    biAmpCrossover.prepare (monoSpec);  // LP → cleanDIBuffer, HP → ampChainBuffer 분할
     overdrive.prepare (monoSpec);
     octaver.prepare (monoSpec);
     envelopeFilter.prepare (monoSpec);
     preamp.prepare (monoSpec);
-    ampVoicing.prepare (monoSpec);
+    ampVoicing.prepare (monoSpec);      // Preamp와 ToneStack 사이 위치
     toneStack.prepare (monoSpec);
     graphicEQ.prepare (monoSpec);
     chorus.prepare (monoSpec);
     delay.prepare (monoSpec);
     reverb.prepare (monoSpec);
     powerAmp.prepare (monoSpec);
-    cabinet.prepare (monoSpec);
+    cabinet.prepare (monoSpec);         // 실제 처리 위치는 process()에서 IR Position에 따라 결정
     diBlend.prepare (monoSpec);
 
-    // --- Allocate signal split buffers (prepareToPlay only, never in processBlock) ---
+    // --- BiAmpCrossover 출력 버퍼 할당 (processBlock 내 메모리 할당 금지) ---
+    // 오디오 스레드에서 일회용 버퍼 재할당을 피하기 위해 미리 할당
     const int maxSamples = static_cast<int> (spec.maximumBlockSize);
-    cleanDIBuffer.setSize (1, maxSamples);
-    ampChainBuffer.setSize (1, maxSamples);
-    mixedBuffer.setSize (1, maxSamples);
+    cleanDIBuffer.setSize (1, maxSamples);  // LP(클린 DI) 출력
+    ampChainBuffer.setSize (1, maxSamples); // HP(앰프 체인) 출력
+    mixedBuffer.setSize (1, maxSamples);    // 예비 버퍼 (미사용, 향후 기능용)
 }
 
 void SignalChain::reset()
@@ -64,15 +65,23 @@ void SignalChain::setAmpModel (AmpModelId modelId)
     currentModelId = modelId;
     const auto& model = AmpModelLibrary::getModel (modelId);
 
-    // --- DSP modules reconfiguration ---
+    // --- DSP 모듈 재설정 (모델별 회로 특성 로드) ---
+    // ToneStack: 모델에 맞는 톤스택 타입 (Baxandall/TMB/James/VPF-VLE 등)
+    // Preamp: 튜브/JFET/ClassD 등 게인 스테이징 특성
+    // PowerAmp: 튜브/솔리드스테이트/ClassD 포화 곡선 + Sag 유무
     toneStack.setType (model.toneStack);
     preamp.setPreampType (model.preamp);
     powerAmp.setPowerAmpType (model.powerAmp, model.sagEnabled);
 
-    // --- AmpVoicing: load model-specific voicing filter coefficients ---
+    // --- AmpVoicing 필터 계수 재계산 ---
+    // 앰프 모델의 고정 Voicing 필터(voicingBands[3])를 로드하여
+    // 각 바이쿼드 계수를 재계산한다.
+    // (메인 스레드에서 호출, 계수는 atomic으로 오디오 스레드에 전달됨)
     ampVoicing.setModel (modelId);
 
-    // --- Cabinet default IR ---
+    // --- 모델 기본 캐비닛 IR 로드 ---
+    // 각 앰프 모델마다 대표적인 스피커 캐비닛 IR을 기본으로 설정
+    // 사용자는 CabinetSelector UI에서 다른 IR로 변경 가능
     if (model.defaultIRName == "ir_8x10_svt_wav")
         cabinet.loadIRFromBinaryData (BinaryData::ir_8x10_svt_wav,
                                        BinaryData::ir_8x10_svt_wavSize);
@@ -91,12 +100,14 @@ void SignalChain::setAmpModel (AmpModelId modelId)
     else
         cabinet.loadDefaultIR();
 
-    // --- Clear filter memory ---
+    // --- 필터 메모리 클리어 (이전 모델의 상태 초기화) ---
+    // 소음 방지 및 깔끔한 전환
     toneStack.reset();
     powerAmp.reset();
     ampVoicing.reset();
 
-    // --- Force coefficient recalculation on next timer tick ---
+    // --- 계수 재계산 강제 실행 (updateCoefficientsFromMainThread에서) ---
+    // 이전 파라미터 값과 비교해 변경이 없어도 강제 업데이트하도록 표식
     prevBass = prevMid = prevTreble = prevPresence = -1.0f;
     prevVpf = prevVle = prevGrunt = prevAttack = -1.0f;
     prevMidPos = -1;
@@ -225,7 +236,8 @@ void SignalChain::connectParameters (juce::AudioProcessorValueTreeState& apvts)
         apvts.getRawParameterValue ("di_blend"),
         apvts.getRawParameterValue ("clean_level"),
         apvts.getRawParameterValue ("processed_level"),
-        apvts.getRawParameterValue ("ir_position"));
+        apvts.getRawParameterValue ("ir_position"),
+        apvts.getRawParameterValue ("di_blend_on"));
 
     // Cache IR position param for use in process()
     irPositionParam = apvts.getRawParameterValue ("ir_position");
@@ -297,10 +309,12 @@ void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTre
         prevCrossoverFreq = crossoverFreq;
     }
 
-    // --- Model-specific parameters ---
+    // --- 앰프 모델 전용 파라미터 업데이트 (메인 스레드 전용) ---
+    // 각 앰프 모델은 고정된 톤스택 타입을 가지며, 추가 제어 파라미터를 제공할 수 있다.
     const auto& model = AmpModelLibrary::getModel (currentModelId);
 
-    // Italian Clean: VPF/VLE
+    // Italian Clean (MarkbassFourBand): VPF(Variable Pre-shape Filter) / VLE(Vintage Loudspeaker Emulator)
+    // VPF: 미드 스쿱 (380Hz 노치 + 35Hz/10kHz 부스트), VLE: 가변 로우패스 고역 롤오프
     if (model.toneStack == ToneStackType::MarkbassFourBand)
     {
         const float vpf = apvts.getRawParameterValue ("vpf")->load();
@@ -313,7 +327,8 @@ void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTre
         }
     }
 
-    // Modern Micro: Grunt/Attack
+    // Modern Micro (BaxandallGrunt): Grunt(왜곡 깊이) / Attack(반응 속도)
+    // Grunt 변경 시 ToneStack의 내부 필터 깊이가 조절되므로 전체 계수 재계산 필요
     if (model.toneStack == ToneStackType::BaxandallGrunt)
     {
         const float grunt  = apvts.getRawParameterValue ("grunt")->load();
@@ -330,7 +345,9 @@ void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTre
         }
     }
 
-    // American Vintage / Origin Pure: Mid Position (Baxandall models)
+    // American Vintage / Origin Pure (Baxandall): Mid Position(5단계 주파수 선택)
+    // Baxandall 톤스택의 미드 밴드 중심주파수를 250Hz~3kHz 범위에서 선택
+    // 선택 변경 시 IIR 계수 재계산 필요
     if (model.toneStack == ToneStackType::Baxandall)
     {
         const int midPos = static_cast<int> (apvts.getRawParameterValue ("mid_position")->load());

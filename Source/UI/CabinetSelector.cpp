@@ -7,11 +7,12 @@
 /**
  * @brief CabinetSelector 생성자
  *
- * IR 선택 ComboBox와 Bypass 토글 버튼을 초기화한다.
- * IR 파라미터("cab_ir")의 변경을 리스닝한다.
+ * IR 선택 ComboBox, 커스텀 IR 로드 버튼, Bypass 토글을 초기화한다.
+ * IR 파라미터("cab_ir")의 변경을 리스닝하여 자동 로드를 트리거한다.
  *
  * @param apvts      APVTS (파라미터 Attachment 생성)
  * @param processor  SignalChain의 Cabinet에 접근하기 위한 참조
+ * @note [메인 스레드] PluginEditor 생성 시 호출됨
  */
 CabinetSelector::CabinetSelector (juce::AudioProcessorValueTreeState& apvts,
                                    PluginProcessor& processor)
@@ -19,33 +20,41 @@ CabinetSelector::CabinetSelector (juce::AudioProcessorValueTreeState& apvts,
       processorRef (processor)
 {
     // --- IR 선택 ComboBox: 5종 내장 캐비닛 IR ---
-    // 각 항목의 콤보박스 ID는 1부터 시작 (JUCE 관례)
-    // loadSelectedIR()에서 0~4 인덱스로 변환하여 switch 처리한다.
-    irCombo.addItem ("8x10 SVT",      1);        // Ampeg SVT 스타일
-    irCombo.addItem ("4x10 JBL",      2);        // Fender Bassman 스타일
-    irCombo.addItem ("1x15 Vintage",  3);        // 빈티지 1x15 캐비닛
-    irCombo.addItem ("2x12 British",  4);        // Orange AD200 스타일
-    irCombo.addItem ("2x10 Modern",   5);        // 현대식 compact 캐비닛
+    // ComboBox ID는 1부터 시작 (JUCE 관례: 0 예약)
+    // loadSelectedIR()에서 0~4 인덱스로 변환하여 BinaryData 로드
+    irCombo.addItem ("8x10 SVT",      1);        // Ampeg SVT: 따뜻함, 풍성한 저역
+    irCombo.addItem ("4x10 JBL",      2);        // Fender Bassman: 미드 밝음, 정의력
+    irCombo.addItem ("1x15 Vintage",  3);        // 빈티지 1x15: 깊은 저음
+    irCombo.addItem ("2x12 British",  4);        // Orange AD200: 타이트, 명확함
+    irCombo.addItem ("2x10 Modern",   5);        // Markbass 스타일 현대식 콤팩트: 타이트/균형
     addAndMakeVisible (irCombo);
 
-    // ComboBox와 APVTS 파라미터 "cab_ir" 동기화
+    // ComboBox와 APVTS "cab_ir" 파라미터 양방향 동기화
     irAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
         apvts, "cab_ir", irCombo);
 
+    // --- 커스텀 IR 로드 버튼 ---
+    // 클릭 시 FileChooser 열어 사용자 정의 WAV 파일 선택 가능
+    // BinaryData 내장 IR 외에 추가 캐비닛 모델 로드 가능
+    loadIRButton.setColour (juce::TextButton::buttonColourId,  juce::Colour (0xff3a3a5a));
+    loadIRButton.setColour (juce::TextButton::textColourOffId, juce::Colour (0xffff8800));
+    loadIRButton.onClick = [this] { openIRFileChooser(); };
+    addAndMakeVisible (loadIRButton);
+
     // --- Bypass 토글 버튼: Cabinet Convolution 우회 ---
-    // 온 상태일 때: amp head 신호만 출력 (캐비닛 제거, 건조한 톤)
-    // 오프 상태일 때: 선택된 IR 적용
+    // OFF (toggle=false): 선택된 IR 적용 (컨볼루션 활성)
+    // ON (toggle=true): 캐비닛 제거, amp head 신호만 (건조한 톤, 앰프만 청취)
     bypassButton.setColour (juce::ToggleButton::textColourId, juce::Colours::white);
     bypassButton.setColour (juce::ToggleButton::tickColourId, juce::Colour (0xffff8800));
     addAndMakeVisible (bypassButton);
 
-    // Bypass 토글과 APVTS 파라미터 "cab_bypass" 동기화
+    // Bypass 토글과 APVTS "cab_bypass" 파라미터 양방향 동기화
     bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
         apvts, "cab_bypass", bypassButton);
 
     // --- "cab_ir" 파라미터 변경 리스너 등록 ---
-    // 사용자가 IR 항목을 선택하면 parameterChanged() 콜백이 호출되어
-    // loadSelectedIR()을 메인 스레드에서 실행한다.
+    // 사용자가 IR 항목을 선택하면 parameterChanged() 콜백 실행
+    // → MessageManager::callAsync로 loadSelectedIR() 메인 스레드에서 실행
     apvts.addParameterListener ("cab_ir", this);
 }
 
@@ -87,7 +96,7 @@ void CabinetSelector::parameterChanged (const juce::String& parameterID, float /
  * 준비 완료 시 오디오 스레드에 원자적으로 교체된다.
  *
  * **IR 목록**:
- * - 0: 8x10 SVT (placeholder)
+ * - 0: 8x10 SVT (BinaryData::ir_8x10_svt_wav)
  * - 1: 4x10 JBL (BinaryData::ir_4x10_jbl_wav)
  * - 2: 1x15 Vintage (BinaryData::ir_1x15_vintage_wav)
  * - 3: 2x12 British (BinaryData::ir_2x12_british_wav)
@@ -133,6 +142,31 @@ void CabinetSelector::loadSelectedIR()
 }
 
 /**
+ * @brief 커스텀 IR WAV 파일 브라우저를 열고 선택한 파일을 Cabinet에 로드한다.
+ *
+ * WAV 파일만 필터링. 선택 완료 시 Cabinet::loadIR(File)로 전달.
+ * FileChooser는 비동기로 동작하며 선택 완료 후 콜백에서 처리한다.
+ */
+void CabinetSelector::openIRFileChooser()
+{
+    fileChooser = std::make_unique<juce::FileChooser> (
+        "커스텀 IR 파일 선택", juce::File::getSpecialLocation (juce::File::userHomeDirectory),
+        "*.wav");
+
+    auto safeThis = juce::Component::SafePointer<CabinetSelector> (this);
+    fileChooser->launchAsync (juce::FileBrowserComponent::openMode |
+                               juce::FileBrowserComponent::canSelectFiles,
+        [safeThis] (const juce::FileChooser& fc)
+        {
+            if (safeThis == nullptr)
+                return;
+            auto result = fc.getResult();
+            if (result.existsAsFile())
+                safeThis->processorRef.getSignalChain().getCabinet().loadIR (result);
+        });
+}
+
+/**
  * @brief CabinetSelector 배경 및 "CABINET" 라벨을 그린다.
  *
  * @param g  Graphics 컨텍스트
@@ -161,8 +195,11 @@ void CabinetSelector::resized()
     auto area = getLocalBounds().reduced (10);
     area.removeFromTop (20);  // 라벨 공간
 
-    // IR 선택 ComboBox 배치
-    irCombo.setBounds (area.removeFromTop (25));
+    // IR 선택 ComboBox + Load IR 버튼을 같은 행에 배치
+    auto irRow = area.removeFromTop (25);
+    loadIRButton.setBounds (irRow.removeFromRight (90));
+    irRow.removeFromRight (4);  // 간격
+    irCombo.setBounds (irRow);
     area.removeFromTop (5);  // 간격
 
     // Bypass 토글 버튼 배치

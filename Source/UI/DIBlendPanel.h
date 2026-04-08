@@ -11,8 +11,8 @@
  * 또한 Cabinet IR의 삽입 위치(Pre-IR vs Post-IR)를 제어한다.
  *
  * 포함 요소:
- * - expandButton: 접기/펼치기 토글 (▶/▼ 아이콘)
- * - titleLabel: "DI Blend" 제목 라벨
+ * - expandButton: 접기/펼치기 토글 (>/v 아이콘)
+ * - enabledToggle: DI Blend ON/OFF (di_blend_on 파라미터 바인딩)
  * - blendKnob: 혼합 비율 (di_blend, 0-100%): 클린(0%) ← → 처리음(100%)
  * - cleanLevelKnob: 클린 신호 레벨 (clean_level, -12~+12 dB)
  * - processedLevelKnob: 처리 신호 레벨 (processed_level, -12~+12 dB)
@@ -27,7 +27,7 @@ class DIBlendPanel : public juce::Component
 {
 public:
     static constexpr int collapsedHeight = 36;  // 헤더만: 버튼 + 라벨
-    static constexpr int expandedHeight  = 110; // 헤더 + 노브 + 토글 공간
+    static constexpr int expandedHeight  = 130; // 헤더(36) + 노브(80) + 여백(14)
 
     DIBlendPanel (juce::AudioProcessorValueTreeState& apvts);
     ~DIBlendPanel() override;
@@ -60,8 +60,9 @@ public:
     std::function<void()> onExpandChange;
 
 private:
-    juce::TextButton expandButton;      // ▶/▼ 아이콘 (토글)
-    juce::Label titleLabel;             // "DI Blend" 제목 라벨
+    juce::TextButton expandButton;      // >/v 아이콘 (토글)
+    juce::ToggleButton enabledToggle;   // DI Blend ON/OFF
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> enabledAttachment;
 
     std::unique_ptr<Knob> blendKnob;              // 클린/처리 혼합 비율 (0~100%)
     std::unique_ptr<Knob> cleanLevelKnob;        // 클린 레벨 트림 (±12dB)

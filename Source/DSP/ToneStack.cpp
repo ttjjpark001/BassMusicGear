@@ -88,7 +88,7 @@ void ToneStack::setType (ToneStackType type)
             // Italian Clean: 7개 필터 (40/360/800/10kHz + VPF 저셸프 + VPF 노치 + VPF 고셸프)
             // + VLE 로우패스(StateVariableTPTFilter) 별도
             activeFilterCount = 7;
-            vleActive = true;  // VLE(Vintage Loudness Enhance) 로우패스 활성화
+            vleActive = true;  // VLE(Vintage Loudspeaker Emulator) 로우패스 활성화
             break;
     }
 }
@@ -180,13 +180,13 @@ void ToneStack::updateMidPosition (int position)
 /**
  * @brief Italian Clean(MarkbassFourBand) 톤스택 전용: VPF/VLE 계수 업데이트
  *
- * **VPF (Vintage Presence Filter)** — 3필터 합산으로 구현:
+ * **VPF (Variable Pre-shape Filter)** — 3필터 합산으로 구현:
  * ① 35Hz 로우셸프 부스트: 저음 강조
  * ② 380Hz 피킹 컷(노치): 중음 영역 제거
  * ③ 10kHz 하이셸프 부스트: 고음 강조
  * 모든 필터의 깊이가 VPF 노브(0~1)에 선형 비례: 0~12dB
  *
- * **VLE (Vintage Loudness Enhance)** — StateVariableTPTFilter 로우패스:
+ * **VLE (Vintage Loudspeaker Emulator)** — StateVariableTPTFilter 로우패스:
  * 차단 주파수: 0%(노브) = 20kHz (전대역), 100% = 4kHz (저음 강조)
  *
  * @param vpf  VPF 깊이 (0.0 ~ 1.0 → 0 ~ 12dB)

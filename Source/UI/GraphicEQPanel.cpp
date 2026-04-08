@@ -3,17 +3,19 @@
 /**
  * @brief 10밴드 그래픽 EQ 패널 UI 생성
  *
- * 슬라이더, 토글, 프리셋 드롭다운, FLAT 버튼을 초기화하고
- * APVTS 파라미터들에 바인딩한다. 초기 상태는 펼침(expanded=true).
+ * 수직 슬라이더(31-16kHz), 프리셋 드롭다운, ON/OFF 토글, FLAT 버튼을 초기화한다.
+ * 초기 상태는 펼침(expanded=true)이므로 모든 슬라이더와 컨트롤이 표시된다.
  *
- * @param apvts AudioProcessorValueTreeState 참조
- *            (geq_enabled, geq_31~16k, 파라미터들을 포함해야 함)
+ * @param apvts  AudioProcessorValueTreeState 참조
+ *               (geq_enabled, geq_31~16k 파라미터 포함 필수)
+ * @note [메인 스레드] PluginEditor 생성 시 호출됨
  */
 GraphicEQPanel::GraphicEQPanel (juce::AudioProcessorValueTreeState& apvts)
     : apvtsRef (apvts)
 {
-    // --- 접기/펼치기 버튼 (EffectBlock과 동일한 색상/스타일) ---
-    // 초기값은 "v" (펼침 상태). setExpanded()로 상태 변경 시 ">" / "v" 토글
+    // --- 접기/펼치기 버튼 ---
+    // 초기: "v" (펼침 상태). setExpanded()로 토글 시 ">" (접힘) / "v" (펼침)
+    // EffectBlock과 동일한 색상 스타일 적용
     expandButton.setButtonText ("v");
     expandButton.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff3a3a5a));
     expandButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff5a5a7a));
@@ -22,7 +24,9 @@ GraphicEQPanel::GraphicEQPanel (juce::AudioProcessorValueTreeState& apvts)
     expandButton.onClick = [this] { setExpanded (! expanded); };
     addAndMakeVisible (expandButton);
 
-    // --- ON/OFF toggle ---
+    // --- Graphic EQ ON/OFF 토글 ---
+    // OFF (toggle=false): EQ 필터 바이패스, 신호 통과만
+    // ON (toggle=true): 10밴드 슬라이더 값 적용
     enabledToggle.setButtonText ("Graphic EQ");
     enabledToggle.setColour (juce::ToggleButton::textColourId, juce::Colours::white);
     enabledToggle.setColour (juce::ToggleButton::tickColourId, juce::Colour (0xffff8800));
@@ -32,9 +36,10 @@ GraphicEQPanel::GraphicEQPanel (juce::AudioProcessorValueTreeState& apvts)
         apvts, "geq_enabled", enabledToggle);
 
     // --- EQ 프리셋 드롭다운 ---
-    // 선택지: (Custom), Flat, Bass Boost, Scoop Mid, Presence, Vintage Warmth, Hi-Fi
-    // ID: 1 (Custom, 읽기 전용 — 사용자 수동 조정 시 자동 표시), 2~7 (프리셋 ID)
-    // onChange: ID >= 2 (실제 프리셋)이면 applyPreset()을 호출하여 10밴드 값 일괄 적용
+    // 선택지:
+    //   ID=1: (Custom) — 사용자 수동 조정 시 자동 표시됨 (읽기 전용)
+    //   ID=2~7: 프리셋 (Flat, Bass Boost, Scoop Mid, Presence, Vintage Warmth, Hi-Fi)
+    // onChange: ID >= 2이면 applyPreset(id) 호출 → 10밴드 값 일괄 로드
     presetCombo.addItem ("(Custom)",       1);
     presetCombo.addItem ("Flat",           2);
     presetCombo.addItem ("Bass Boost",     3);
@@ -56,37 +61,42 @@ GraphicEQPanel::GraphicEQPanel (juce::AudioProcessorValueTreeState& apvts)
     addAndMakeVisible (presetCombo);
 
     // --- FLAT 리셋 버튼 ---
-    // 클릭 시 모든 10밴드를 0dB로 설정하고 presetCombo를 "Flat"(ID=2)으로 선택
-    // setValueNotifyingHost()로 파라미터를 변경하므로 슬라이더의 onValueChange가 발동되어
-    // 일시적으로 "(Custom)"으로 바뀌지만, 마지막에 presetCombo를 "Flat"으로 강제 설정한다.
+    // 클릭 시 모든 10밴드를 0dB로 설정하고 presetCombo를 "Flat"으로 표시
+    // setValueNotifyingHost() 호출 → 각 슬라이더 onValueChange 발동
+    // → presetCombo가 일시적으로 "(Custom)"으로 바뀌지만,
+    //    마지막에 강제로 "Flat"(ID=2)로 설정하여 UI 일관성 유지
     flatButton.setButtonText ("FLAT");
     flatButton.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff3a3a5a));
     flatButton.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xffff8800));
     flatButton.onClick = [this]
     {
+        // 모든 10밴드를 0dB로 설정
         for (int i = 0; i < numBands; ++i)
         {
             if (auto* param = apvtsRef.getParameter (bandParamIds[i]))
                 param->setValueNotifyingHost (param->convertTo0to1 (0.0f));
         }
-        presetCombo.setSelectedId (2, juce::dontSendNotification); // "Flat"
+        // 프리셋 표시를 "Flat"으로 강제 설정 (onValueChange 콜백 무시)
+        presetCombo.setSelectedId (2, juce::dontSendNotification);
     };
     addAndMakeVisible (flatButton);
 
     // --- 10밴드 수직 슬라이더 초기화 ---
-    // 각 슬라이더:
-    // - LinearVertical 스타일 (위로 드래그 = 게인 증가)
-    // - dB 값을 슬라이더 위에 텍스트박스로 표시 (높이 16px, 1소수점)
-    // - 색상: 엄지손가락(thumb)은 주황색, 트랙은 중간 회색, 배경은 다크 네이비
-    // - APVTS 파라미터에 동기화됨 (SliderAttachment)
-    // - onValueChange: 사용자가 수동으로 슬라이더를 조정하면 presetCombo를 "(Custom)"으로 표시
-    //   (단, isApplyingPreset 플래그가 true일 때는 무시하여 프리셋 적용 중 "(Custom)"으로 되지 않음)
+    // 각 슬라이더는 이동 방향(위 = 증가), 텍스트 표시, 색상, APVTS 바인딩을 수행
     for (int i = 0; i < numBands; ++i)
     {
+        // 슬라이더 스타일: LinearVertical (위로 드래그 = 게인 증가)
         sliders[i].setSliderStyle (juce::Slider::LinearVertical);
+
+        // 텍스트 박스: 슬라이더 위에 표시 (40px 너비, 16px 높이), 1소수점 정밀도
         sliders[i].setTextBoxStyle (juce::Slider::TextBoxAbove, true, 40, 16);
         sliders[i].setNumDecimalPlacesToDisplay (1);
         sliders[i].setTextValueSuffix (" dB");
+
+        // 마우스 휠 비활성화 (Viewport 스크롤 우선)
+        sliders[i].setScrollWheelEnabled (false);
+
+        // 색상 설정: thumb(주황), track(중간 회색), background(진한 네이비), text(밝은 회색)
         sliders[i].setColour (juce::Slider::thumbColourId,        juce::Colour (0xffff8800));
         sliders[i].setColour (juce::Slider::trackColourId,        juce::Colour (0xff5a5a7a));
         sliders[i].setColour (juce::Slider::backgroundColourId,   juce::Colour (0xff2a2a3e));
@@ -95,18 +105,19 @@ GraphicEQPanel::GraphicEQPanel (juce::AudioProcessorValueTreeState& apvts)
         sliders[i].setColour (juce::Slider::textBoxOutlineColourId,    juce::Colours::transparentBlack);
         addAndMakeVisible (sliders[i]);
 
+        // APVTS 파라미터에 슬라이더 바인딩 (양방향 동기화)
         sliderAttachments[i] = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
             apvts, bandParamIds[i], sliders[i]);
 
-        // 슬라이더 수동 조정 시 프리셋 표시 변경 로직
-        // isApplyingPreset=false이면 "(Custom)"으로 표시. true이면 무시하여 프리셋 적용 중 되돌리지 않음.
+        // 슬라이더 수동 조정 시 프리셋 표시 변경
+        // isApplyingPreset=true이면 무시 (프리셋 적용 중에 "(Custom)"으로 되돌리지 않음)
         sliders[i].onValueChange = [this]
         {
             if (! isApplyingPreset)
                 presetCombo.setSelectedId (1, juce::dontSendNotification);
         };
 
-        // 각 슬라이더 아래 주파수 라벨 (31, 63, 125, ... 16k)
+        // 각 슬라이더 아래 주파수 라벨 (31Hz, 63Hz, 125Hz, ... 16kHz)
         labels[i].setText (bandLabels[i], juce::dontSendNotification);
         labels[i].setJustificationType (juce::Justification::centred);
         labels[i].setColour (juce::Label::textColourId, juce::Colour (0xffaaaacc));
@@ -241,7 +252,7 @@ void GraphicEQPanel::resized()
 {
     auto area = getLocalBounds().reduced (4);
 
-    // 헤더 행: [▼ 버튼 28px] [ON/OFF 토글 140px] [FLAT 버튼 60px]
+    // 헤더 행: [expandButton 28px] [enabledToggle 140px] [presetCombo: 남은 공간] [flatButton 60px]
     // collapsedHeight(36px) - 8px = 28px 높이로 헤더 구성 (EffectBlock과 동일)
     auto headerRow = area.removeFromTop (collapsedHeight - 8);
     expandButton.setBounds (headerRow.removeFromLeft (28));

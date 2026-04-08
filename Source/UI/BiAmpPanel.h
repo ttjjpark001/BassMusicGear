@@ -11,7 +11,7 @@
  * 신호 체인 구조: 입력 → BiAmpCrossover(LP+HP 분할) → DIBlend(혼합)
  *
  * 포함 요소:
- * - expandButton: 접기/펼치기 토글 (▶/▼ 아이콘)
+ * - expandButton: 접기/펼치기 토글 (>/v 아이콘)
  * - enabledToggle: Bi-Amp ON/OFF (biamp_on 파라미터 바인딩)
  * - freqKnob: 크로스오버 주파수 (crossover_freq, 60-500 Hz)
  *
@@ -24,7 +24,7 @@ class BiAmpPanel : public juce::Component
 {
 public:
     static constexpr int collapsedHeight = 36;  // 헤더만: 버튼 + 토글
-    static constexpr int expandedHeight  = 100; // 헤더 + 노브 공간
+    static constexpr int expandedHeight  = 120; // 헤더 + 노브 공간 (노브 80px + 여백)
 
     BiAmpPanel (juce::AudioProcessorValueTreeState& apvts);
     ~BiAmpPanel() override;
@@ -57,7 +57,7 @@ public:
     std::function<void()> onExpandChange;
 
 private:
-    juce::TextButton expandButton;      // ▶/▼ 아이콘 (토글)
+    juce::TextButton expandButton;      // >/v 아이콘 (토글)
     juce::ToggleButton enabledToggle;   // "Bi-Amp" ON/OFF 버튼
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> enabledAttachment;
 

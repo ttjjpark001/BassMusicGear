@@ -353,9 +353,10 @@ PLAN.md의 Phase 5를 구현해줘. PRD.md 섹션 4(Post-FX), 8을 참고한다.
 
 ### P0 구현 항목
 - `Source/DSP/BiAmpCrossover.h/.cpp` — LR4 4차 크로스오버 (2차 Butterworth LP 직렬 2회). ON: LP→cleanDI / HP→amp chain. OFF: 전대역 양쪽 분기. 60~500Hz
-- `Source/DSP/DIBlend.h/.cpp` — Blend(0~100%), Clean/Processed Level(±12dB), IR Position(Pre/Post)
-  - Post-IR: `mixed` 그대로 출력 (Cabinet은 processed 경로 내 포함)
-  - Pre-IR: `cabinetIR(mixed)` 출력
+- `Source/DSP/DIBlend.h/.cpp` — **Enabled 토글(`di_blend_on`)**, Blend(0~100%), Clean/Processed Level(±12dB), IR Position(Pre/Post)
+  - OFF: 프로세스드 신호만 출력 (DI 혼합 우회), UI에서 다른 컨트롤 비활성 표시
+  - ON Post-IR: `mixed` 그대로 출력 (Cabinet은 processed 경로 내 포함)
+  - ON Pre-IR: `cabinetIR(mixed)` 출력
 - `Source/DSP/AmpVoicing.h/.cpp` — 앰프별 고정 Voicing 필터 (2~3개 바이쿼드). `setModel(AmpModelType)` 호출 시 해당 앰프의 필터 계수 로드. `AmpVoicingPlan.md` 섹션 3 참고
 - `Source/Models/AmpModel.h` 수정 — `struct VoicingBand { float freq, gainDb, q; FilterType type; }`, `std::array<VoicingBand, 3> voicingBands` 추가
 - `Source/Models/AmpModelLibrary.cpp` 수정 — 5종 모델에 Voicing 값 등록 (`AmpVoicingPlan.md` 섹션 3-1~3-5) + **Origin Pure** 6번째 앰프 추가
@@ -364,7 +365,11 @@ PLAN.md의 Phase 5를 구현해줘. PRD.md 섹션 4(Post-FX), 8을 참고한다.
 - `SignalChain` 대규모 수정 — ① IR Position에 따라 Cabinet ↔ DIBlend 연결 순서 동적 전환. cleanDI 버퍼 별도 할당 (`prepareToPlay`에서). ② `AmpVoicing`을 Preamp와 ToneStack 사이에 삽입. 앰프 모델 전환 시 `ampVoicing.setModel(model)` 호출
 - `Cabinet` 수정 — `loadIR(const juce::File&)` 실제 구현 (✅ CARRY)
 - `Source/UI/BiAmpPanel.h/.cpp` — ON/OFF 토글, Crossover Freq 노브
-- `Source/UI/DIBlendPanel.h/.cpp` — Blend 노브, Clean/Processed Level 노브, IR Position 토글
+- `Source/UI/DIBlendPanel.h/.cpp` — **Enabled 토글(헤더)**, Blend 노브, Clean/Processed Level 노브, IR Position 토글. OFF 상태에서는 Blend 이하 컨트롤 비활성화
+
+### 구현 후 변경 사항 (Phase 6 완료 시점 반영)
+- **DI Blend ON/OFF 토글 추가**: 초기 계획에는 없던 `di_blend_on` APVTS 파라미터를 추가. 사용자가 DI 혼합 경로 자체를 우회할 수 있도록 헤더에 토글 노출 (DIBlendPanel 제목 라벨을 ToggleButton으로 대체).
+- **AmpVoicing 게인 값 강화**: 초기 AmpVoicingPlan 설계값(±1.5~3dB)으로는 ToneStack Flat 상태에서 앰프 간 음색 차이가 청감상 미묘했다. Phase 6 튜닝 과정에서 전 앰프 Voicing 게인을 약 2배로 강화(최대 ±8dB)하여 가청 차별화를 확보. `AmpVoicingPlan.md` 섹션 3-1~3-5 및 `AmpModelLibrary.cpp`의 `voicingBands` 동기화 완료.
 
 ### 테스트 기준
 - `Tests/BiAmpCrossoverTest.cpp`
@@ -404,7 +409,7 @@ PLAN.md의 Phase 6을 구현해줘. PRD.md 섹션 6, 10과 CLAUDE.md SignalChain
 - AmpModelLibrary.cpp 수정 (5종 Voicing 값 등록 + **Origin Pure 6번째 앰프 추가**: SolidState Preamp + Baxandall ToneStack + Class D PowerAmp + Flat Voicing + 실버 색상 #c0c0c8)
 - SignalChain 수정 — AmpVoicing을 Preamp~ToneStack 사이 삽입 + 앰프 전환 시 setModel() 호출
 - BiAmpCrossover (LR4 크로스오버, ON/OFF, 60~500Hz)
-- DIBlend (Blend/Clean Level/Processed Level/IR Position Pre/Post)
+- DIBlend (Enabled 토글 `di_blend_on` / Blend / Clean Level / Processed Level / IR Position Pre/Post)
 - SignalChain 대규모 수정 (IR Position에 따른 동적 라우팅. cleanDI 버퍼는 prepareToPlay에서 할당)
 - BiAmpPanel UI, DIBlendPanel UI
 

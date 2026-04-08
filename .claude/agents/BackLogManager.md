@@ -160,13 +160,13 @@ BassMusicGear 구현 백로그.
 
 | 심각도 | 항목 | 원래 분류 | 설명 |
 |--------|------|---------|------|
-| 🟡 부분 구현 | 앰프 모델별 UI 색상 테마 | P1 이월 (→ Phase 8) | AmpModel.themeColour 필드는 있으나 LookAndFeel에 적용 안 됨 |
+| 🟡 부분 구현 | 앰프 모델별 UI 색상 테마 | P1 이월 (→ Phase 9) | AmpModel.themeColour 필드는 있으나 LookAndFeel에 적용 안 됨 |
 
 ### Phase 3 — 튜너 + 컴프레서
 
 | 심각도 | 항목 | 원래 분류 | 설명 |
 |--------|------|---------|------|
-| 🟢 확인 필요 | Compressor 게인 리덕션 VUMeter 연동 | P0 부분 | grValue atomic 저장은 있으나 VUMeter가 Phase 8 전이라 아직 표시 불가 |
+| 🟢 확인 필요 | Compressor 게인 리덕션 VUMeter 연동 | P0 부분 | grValue atomic 저장은 있으나 VUMeter가 Phase 9 전이라 아직 표시 불가 |
 
 ---
 
@@ -199,7 +199,7 @@ BassMusicGear 구현 백로그.
 3. **이월 항목 설명**: 어느 Phase에서 이월됐는지, 이월 목표 Phase가 어디인지 명시
 4. **이월 목표 Phase가 완료됐는데 여전히 미구현**: 심각도를 `🔴 미구현`으로 격상
 5. **미래 Phase로 이월 예정인 항목**: 그 미래 Phase가 아직 완료되지 않은 경우 → 문서에 포함하되 "이월 예정" 표기
-   - 예: Phase 2가 완료됐고 P1 항목이 "Phase 8로 이월" 예정인 경우 → 포함 (Phase 8 미완료이므로 구현 안 됨)
+   - 예: Phase 2가 완료됐고 P1 항목이 "Phase 9로 이월" 예정인 경우 → 포함 (Phase 9 미완료이므로 구현 안 됨)
 
 ---
 

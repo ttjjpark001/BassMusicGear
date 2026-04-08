@@ -26,10 +26,10 @@ $ARGUMENTS
 
 `$ARGUMENTS`에서 phase 번호를 파싱한다.
 
-- 유효 범위: 0~9 (정수)
+- 유효 범위: 0~10 (정수)
 - 범위를 벗어나거나 숫자가 아닌 경우 → 즉시 중단:
   ```
-  ❌ 오류: Phase 번호는 0~9 사이의 정수여야 합니다.
+  ❌ 오류: Phase 번호는 0~10 사이의 정수여야 합니다.
   ```
 
 파싱된 번호를 `N`으로 부른다.
@@ -354,9 +354,10 @@ Phase 3 완료: 튜너 + 컴프레서 — YIN 튜너 + VCA 컴프레서 + TunerD
 Phase 4 완료: Pre-FX — Overdrive(Tube/JFET/Fuzz) + Octaver + EnvelopeFilter + EffectBlock UI
 Phase 5 완료: 그래픽 EQ + Post-FX — 10밴드 Constant-Q EQ + Chorus/Delay/Reverb
 Phase 6 완료: Bi-Amp + DI Blend — LR4 크로스오버 + DIBlend + IR Position 동적 라우팅
-Phase 7 완료: 프리셋 시스템 — PresetManager + 팩토리 프리셋 15종 + A/B 슬롯 + PresetPanel
-Phase 8 완료: UI 완성 + 출력 — VUMeter + SignalChainView + 다크 테마 + 앰프 색상 + 리사이즈
-Phase 9 완료: 오디오 설정 + 릴리즈 — SettingsPage + 전체 테스트 통과 + VST3 설치 v0.1.0
+Phase 7 완료: 이월 작업 정리 — PowerAmp 포화 차별화 + Delay BPM Sync + NoiseGate/Compressor UI
+Phase 8 완료: 프리셋 시스템 — PresetManager + 팩토리 프리셋 15종 + A/B 슬롯 + PresetPanel
+Phase 9 완료: UI 완성 + 출력 — VUMeter + SignalChainView + 다크 테마 + 앰프 색상 + 리사이즈
+Phase 10 완료: 오디오 설정 + 릴리즈 — SettingsPage + 전체 테스트 통과 + VST3 설치 v0.1.0
 ```
 
 ---
@@ -519,8 +520,8 @@ Git:
   "/Phase N+1" 또는 작업 완료 후 "/Complete N+1"
 ```
 
-Phase 9 완료 시에는 다음 메시지를 추가한다:
+Phase 10 완료 시에는 다음 메시지를 추가한다:
 ```
-🎉 모든 Phase(0~9) 완료! BassMusicGear v0.1.0 릴리즈 준비 완료.
+🎉 모든 Phase(0~10) 완료! BassMusicGear v0.1.0 릴리즈 준비 완료.
    "/InstallPlugin vst3 release" 로 DAW 테스트를 진행하세요.
 ```

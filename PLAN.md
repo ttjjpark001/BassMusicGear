@@ -545,6 +545,7 @@ P0 구현 순서:
 - A/B 슬롯 — `PluginProcessor`에 `slotA`, `slotB` ValueTree 멤버. `saveToSlot(int)` / `loadFromSlot(int)`
 - `Resources/Presets/` — 팩토리 프리셋 XML 15종 (Clean/Driven/Heavy × 5 모델). `scripts/GenBinaryData.sh` 실행하여 CMakeLists 갱신
 - `Source/UI/PresetPanel.h/.cpp` — 팩토리/유저 구분 목록, Save/Load/Delete/Export/Import 버튼, A/B 슬롯 버튼
+- **Active/Passive 입력 패드** — `input_active` (bool, 기본 false=Passive) APVTS 파라미터 추가. `PluginProcessor::processBlock()` 최상단에서 Active일 때 입력 버퍼에 `-10dB` (×0.3162) 감쇄 적용. UI: Input Gain 노브 옆 토글 버튼 (`Passive` / `Active` 레이블), Active 선택 시 강조색 표시
 - **EQ 사용자 프리셋** — `GraphicEQPanel` 드롭다운에 사용자 프리셋 저장/불러오기/삭제 기능 추가
   - 저장 경로: `userApplicationDataDirectory/BassMusicGear/EQPresets/*.xml`
   - 드롭다운 하단에 "Save Preset..." 항목 추가 → 이름 입력 다이얼로그(AlertWindow) → XML 저장
@@ -568,6 +569,8 @@ P0 구현 순서:
   - A2(110Hz) 사인파 입력 → 감지 주파수 ±5센트 이내
   - 음이름 변환: 41Hz→"E", 55Hz→"A", 73.4Hz→"D", 98Hz→"G"
   - 무음(0) 입력 → 크래시 없음
+- Active/Passive 패드: Active 시 출력 RMS가 Passive 대비 -10dB ±0.5dB
+- Active/Passive 패드: NaN/Inf 없음, bypass(Passive) 시 입출력 동일
 - `Tests/PresetTest.cpp`
   - 전체 파라미터 저장 → 불러오기 값 일치 (오차 1e-5 이하)
   - A/B 독립성: A 저장 후 변경 → A 로드 → 원래값 복귀
@@ -575,6 +578,7 @@ P0 구현 순서:
   - `.bmg` Export → Import 라운드트립 일치
 
 ### 스모크 테스트
+- Active/Passive 토글 → Active 선택 시 소리가 약 10dB 작아짐 (액티브 베이스 과입력 방지 확인)
 - 커스텀 프리셋 저장 → 앱 재시작 → 불러오기 성공
 - A/B 버튼 전환 → 즉시 음색 변화
 
@@ -591,6 +595,10 @@ Tests/CMakeLists.txt에 세 파일 추가 필수.
 그 다음 PresetMigrator agent(.claude/agents/PresetMigrator.md)를 구현한다.
 
 그 다음:
+- Active/Passive 입력 패드
+  - APVTS: `input_active` (bool, 기본 false)
+  - PluginProcessor::processBlock() 맨 앞에서 input_active=true이면 버퍼 전체에 0.3162f(=-10dB) 곱하기 (RT-safe, new/lock 없음)
+  - UI: AmpPanel 또는 PluginEditor 상단 Input Gain 노브 옆에 Passive/Active 토글 버튼. Active 선택 시 강조색(붉은 계열) 표시
 - PresetManager (ValueTree 직렬화, .bmg 파일 저장/로드, Export/Import)
 - PluginProcessor getStateInformation/setStateInformation (없는 파라미터는 기본값 처리)
 - A/B 슬롯 (slotA/slotB ValueTree, saveToSlot/loadFromSlot)
@@ -769,6 +777,7 @@ PLAN.md의 Phase 10을 구현해줘. PRD.md 섹션 13과 CLAUDE.md AudioDeviceMa
 | Phase 1 | NoiseGate EffectBlock UI | Phase 7 | ✅ (Phase 7에서 완료) |
 | Phase 1 | NoiseGateTest.cpp 단위 테스트 누락 | Phase 8 | ☐ |
 | Phase 1 | PreampTest.cpp 단위 테스트 누락 | Phase 8 | ☐ |
+| Phase 8 | Active/Passive 입력 패드 (`input_active`, -10dB) | Phase 8 | ☐ |
 | Phase 2 | PowerAmp 앰프별 포화 차별화 | Phase 7 | ✅ (Phase 7에서 완료) |
 | Phase 2 | 앰프 모델별 UI 색상 테마 (Phase 6 라벨 부분 적용 → Phase 9 LookAndFeel 전면 통합) | Phase 9 | ☐ (부분 적용됨) |
 | Phase 2 | 실제 캐비닛 IR 파일 연결 (8x10 SVT / 4x10 JBL / 1x15 Vintage / 2x12 British / 2x10 Modern) | Phase 10 | ☐ |

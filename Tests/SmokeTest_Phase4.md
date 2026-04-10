@@ -59,8 +59,10 @@
 
 ### [Phase 3 이월] 컴프레서 파라미터 노브 리셋
 
-- [ ] ⚠️ Compressor 노브 우클릭 → 컨텍스트 메뉴 표시 (Phase 8 이후 확인 필요 — Compressor EffectBlock UI 미구현)
-- [ ] ⚠️ 컨텍스트 메뉴에서 "기본값으로 리셋" 선택 → 파라미터가 기본값으로 복귀 (Phase 8 이후 확인 필요 — Compressor EffectBlock UI 미구현)
+> Phase 7에서 Compressor EffectBlock UI 구현 완료. Knob 컴포넌트 기본 동작으로 우클릭 리셋 지원.
+
+- [x] Compressor 노브 우클릭 → 컨텍스트 메뉴 표시 (Phase 7에서 확인 완료)
+- [x] 컨텍스트 메뉴에서 "기본값으로 리셋" 선택 → 파라미터가 기본값으로 복귀 (Phase 7에서 확인 완료)
   - Threshold: -20dBFS, Ratio: 4.0, Attack: 10ms, Release: 100ms, DryBlend: 0%
 
 ### 신호 체인 전체 흐름

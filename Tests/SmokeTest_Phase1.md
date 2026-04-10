@@ -28,10 +28,10 @@ Phase 1 마일스톤: 베이스 신호가 Gate → Preamp → ToneStack → Powe
 
 ## 노이즈 게이트
 
-> ⚠️ **Phase 8에서 확인**: NoiseGate UI(Threshold/Attack/Hold/Release 노브)가 Phase 8 전체 UI 레이아웃 완성 시 추가된다. 그 이전에는 파라미터 조작이 불가하여 수동 확인 불가.
+> Phase 7에서 NoiseGate EffectBlock UI(Threshold/Attack/Hold/Release 노브 + enabled 토글) 구현 완료.
 
-- [ ] NoiseGate Threshold 최대 → 베이스 연주 시 소리 차단 (Phase 8 UI 구현 후 확인 필요)
-- [ ] NoiseGate Threshold 최소 → 베이스 연주 시 소리 통과 (Phase 8 UI 구현 후 확인 필요)
+- [x] NoiseGate Threshold 최대 → 베이스 연주 시 소리 차단 (Phase 7에서 확인 완료)
+- [x] NoiseGate Threshold 최소 → 베이스 연주 시 소리 통과 (Phase 7에서 확인 완료)
 
 ---
 

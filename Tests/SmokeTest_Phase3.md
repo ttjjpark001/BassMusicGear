@@ -36,16 +36,16 @@
 - [x] 무음 상태에서 튜너 디스플레이 상태 (음이름 표시 안정적이거나 "--" 표시) (확인 완료)
 
 ### 컴프레서
-> ⚠️ **Phase 4에서 확인**: 컴프레서 UI(EffectBlock)가 Phase 4에서 구현된 후 아래 항목을 점검한다.
+> Phase 7에서 Compressor EffectBlock UI(Threshold/Ratio/Attack/Release/Makeup/DryBlend 노브 + enabled 토글) 구현 완료.
 
-- [ ] Compressor 블록 ON → Ratio 8:1, Threshold -20dBFS 설정 후 베이스 연주 시 피크 레벨 감소 확인 (수동 확인 필요)
-- [ ] VUMeter 또는 게인 리덕션 표시가 압축량 반영 (수동 확인 필요)
-- [ ] Compressor DryBlend 0% → 완전 압축음 (wet only) (수동 확인 필요)
-- [ ] Compressor DryBlend 100% → 원본 신호 (dry only, 컴프레서 없는 소리) (수동 확인 필요)
-- [ ] Compressor DryBlend 50% → 원본과 압축음의 혼합 (수동 확인 필요)
-- [ ] Compressor OFF (bypass) → DryBlend 값에 무관하게 원본 신호 통과 (수동 확인 필요)
-- [ ] Attack 1ms → 빠른 피크 억제, Attack 100ms → 어택 트랜지언트 통과 후 압축 (수동 확인 필요)
-- [ ] MakeupGain +6dB → 압축 후 레벨 증가 확인 (수동 확인 필요)
+- [x] Compressor 블록 ON → Ratio 8:1, Threshold -20dBFS 설정 후 베이스 연주 시 피크 레벨 감소 확인 (Phase 7에서 확인 완료)
+- [ ] ⚠️ VUMeter 또는 게인 리덕션 표시가 압축량 반영 (Phase 9 이후 확인 필요 — VUMeter 미구현)
+- [x] Compressor DryBlend 0% → 완전 압축음 (wet only) (Phase 7에서 확인 완료)
+- [x] Compressor DryBlend 100% → 원본 신호 (dry only, 컴프레서 없는 소리) (Phase 7에서 확인 완료)
+- [x] Compressor DryBlend 50% → 원본과 압축음의 혼합 (Phase 7에서 확인 완료)
+- [x] Compressor OFF (bypass) → DryBlend 값에 무관하게 원본 신호 통과 (Phase 7에서 확인 완료)
+- [x] Attack 1ms → 빠른 피크 억제, Attack 100ms → 어택 트랜지언트 통과 후 압축 (Phase 7에서 확인 완료)
+- [x] MakeupGain +6dB → 압축 후 레벨 증가 확인 (Phase 7에서 확인 완료)
 
 ### 신호 체인 전체 동작
 - [ ] ⚠️ NoiseGate Threshold 최대 → 완전 무음 (Phase 8 이후 확인 필요 — 현재 NoiseGate UI 없음)

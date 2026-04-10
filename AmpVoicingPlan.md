@@ -676,3 +676,38 @@ NAM은 **스냅샷 캡처** 방식이다. 즉 앰프의 모든 노브(Gain, Bass
 - **SmartAmp**: https://github.com/GuitarML/SmartAmpPro — 노브 컨디셔닝 기반 앰프 모델링
 
 MVP 및 13-3 초기 도입 시점에는 NAM(스냅샷 + Post-EQ)으로 출발하되, Phase 11 이상 검토 시점에 이 대안들의 성숙도를 재확인한다.
+
+---
+
+## 13-0. PowerAmp 포화 도입 후 AmpVoicing 원래 값 재테스트
+
+**기록일**: 2026-04-09
+
+### 배경
+
+Phase 6에서 AmpVoicing을 처음 적용했을 때, 앰프 간 음색 차이가 잘 느껴지지 않아 Voicing 필터 계수를 강화하여 적용했다. 이후 Phase 7에서 PowerAmp 앰프별 포화 차별화(Tube6550/TubeEL34/SolidState/ClassD 4종 분기 + 4x 오버샘플링)가 구현되었고, 실제 청취 시 앰프 간 음색 차이가 비로소 느껴지기 시작했다.
+
+### 현재 상태
+
+- **AmpVoicing**: Phase 6에서 강화된 값 적용 중
+- **PowerAmp**: Phase 7에서 4종 포화 곡선 분기 구현 완료
+- **청취 결과**: PowerAmp 포화가 더해지니 앰프 간 음색 차이가 명확히 느껴짐
+
+### 재테스트 필요성
+
+PowerAmp 포화가 없던 상태에서는 AmpVoicing 값을 강하게 올려야 차이가 들렸다. 이제 PowerAmp 포화까지 더해진 최종 상태에서는 강화된 AmpVoicing 값이 **과도하게 느껴질 수 있다**.
+
+**Phase 10 완료 후 다음을 테스트한다:**
+
+1. 현재 강화된 AmpVoicing 값 → 전체 신호 체인(AmpVoicing + PowerAmp 포화 + Cabinet IR) 상태에서 청취
+2. Phase 6 최초 적용 시의 원래(약한) AmpVoicing 값으로 되돌린 후 동일 조건으로 청취
+3. A/B 비교 후 최적값 결정:
+   - 원래 값으로도 충분히 구분된다면 → 원래 값으로 복원
+   - 강화된 값이 더 자연스럽다면 → 현재 값 유지
+   - 중간값이 더 좋다면 → 조정
+
+### 관련 파일
+
+- `Source/DSP/AmpVoicing.cpp` — 현재 강화된 voicingBands 계수 적용
+- `Source/Models/AmpModelLibrary.cpp` — 앰프별 voicingBands 배열 정의
+- `AmpVoicingPlan.md` 섹션 3 — 최초 설계값 / 섹션 13-1 — 캐리커처 방향 재설계 검토값

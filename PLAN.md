@@ -625,6 +625,7 @@ Tests/CMakeLists.txt에 세 파일 추가 필수.
 - **ChorusTest.cpp** (Phase 5 단위 테스트 누락) — enabled=false bypass, Mix=0 원음 통과, Mix=1 모듈레이션 적용(출력 스펙트럼 변화), NaN/Inf 없음
 
 ### P0 구현 항목
+- `Source/UI/TunerDisplay` 개선 — 센트 편차 숫자 표시 추가. 바 옆 또는 아래에 `-12`, `+3`, `0` 등 정수 센트값 실시간 표시. 0센트일 때 `0` (초록), 벗어날수록 붉은 계열. 범위: ±50센트
 - `Source/UI/VUMeter.h/.cpp` — 입력/출력 레벨 바. Peak hold 3초. 클리핑 LED. `juce::Timer` 30Hz. `PluginProcessor`에서 `std::atomic<float>` inputPeak/outputPeak 제공
 - `Source/UI/SignalChainView.h/.cpp` — 블록 가로 배열 시각화. 클릭으로 enabled 파라미터 토글. 비활성 블록 반투명
 - Master Volume 노브 (`master_volume` APVTS 파라미터, SignalChain 출력단 gain)
@@ -683,6 +684,7 @@ UI CARRY:
 - Compressor 게인 리덕션 VUMeter 연동
 
 그 다음:
+- TunerDisplay 개선 — 센트 편차 숫자 표시 (바 옆에 `-12`, `+3`, `0` 등 정수 센트값 실시간 표시. 0=초록, 벗어날수록 붉은 계열. ±50센트 범위)
 - VUMeter (입출력 레벨 바, Peak hold, 클립 LED, 30Hz Timer, Compressor GR 미터 연동)
 - SignalChainView (블록 시각화, 클릭 ON/OFF, 비활성 반투명)
 - Master Volume 노브 + SignalChain 출력단 gain 적용

@@ -55,8 +55,21 @@ void SignalChain::reset()
 
 int SignalChain::getTotalLatencyInSamples() const
 {
+    // --- PDC(Plugin Delay Compensation) 총 지연 시간 합산 ---
+    // 신호 체인 내 모든 지연을 발생시키는 모듈의 지연 시간을 합산한다.
+    // DAW가 다른 트랙과의 시간 정렬(음성동기화)을 정확히 수행하도록 이 값을 보고해야 한다.
+
+    // 지연 발생 모듈들:
+    // - Overdrive: 4x 오버샘플링 (선형 위상 FIR 필터)
+    // - Preamp: 4x 오버샘플링 (선형 위상 FIR 필터)
+    // - PowerAmp: 4x 오버샘플링 (선형 위상 FIR 필터)
+    // - Cabinet: Convolution(컨볼루션, IR 길이에 비례)
+
+    // 각 모듈의 지연 시간은 setupProcessing()/prepare()에서 결정되므로
+    // 런타임에 변경되지 않아 여기서 안전하게 합산할 수 있다.
     return overdrive.getLatencyInSamples()
          + preamp.getLatencyInSamples()
+         + powerAmp.getLatencyInSamples()
          + cabinet.getLatencyInSamples();
 }
 
@@ -216,7 +229,9 @@ void SignalChain::connectParameters (juce::AudioProcessorValueTreeState& apvts)
         apvts.getRawParameterValue ("delay_time"),
         apvts.getRawParameterValue ("delay_feedback"),
         apvts.getRawParameterValue ("delay_damping"),
-        apvts.getRawParameterValue ("delay_mix"));
+        apvts.getRawParameterValue ("delay_mix"),
+        apvts.getRawParameterValue ("delay_bpm_sync"),
+        apvts.getRawParameterValue ("delay_note_value"));
 
     // --- Reverb ---
     reverb.setParameterPointers (

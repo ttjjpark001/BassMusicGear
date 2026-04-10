@@ -17,9 +17,34 @@ ContentComponent::ContentComponent (PluginProcessor& p)
     addAndMakeVisible (ampPanel);
     addAndMakeVisible (cabinetSelector);
 
-    // --- 펼침/접힘 콜백 생성 ---
-    // 블록 토글 시 상위 Viewport에 높이 변경 통지
+    // --- 펼침/접힘 콜백 정의 ---
+    // 이펙터 블록의 상태가 변경될 때마다 호출되는 콜백.
+    // 블록의 높이가 변경되면 상위 Viewport에 알림을 보내
+    // 전체 콘텐츠 높이를 재계산하고 스크롤 영역을 업데이트한다.
     auto expandCb = [this] { if (onHeightChanged) onHeightChanged(); };
+
+    // --- NoiseGate EffectBlock (신호 체인 최선두) ---
+    // 4개 파라미터: Threshold, Attack, Hold, Release
+    // 신호 체인의 첫 번째 블록으로 매우 조용한 신호를 차단한다.
+    // Threshold 이하의 신호는 완전히 뮤트되어 배경 노이즈(허밍, 누수음)를 제거한다.
+    noiseGateBlock = std::make_unique<EffectBlock> (
+        "Noise Gate", p.apvts, "gate_enabled",
+        juce::StringArray { "gate_threshold", "gate_attack", "gate_hold", "gate_release" },
+        juce::StringArray { "Threshold", "Attack", "Hold", "Release" });
+    noiseGateBlock->onExpandChange = expandCb;
+    addAndMakeVisible (*noiseGateBlock);
+
+    // --- Compressor EffectBlock (NoiseGate 다음) ---
+    // 6개 파라미터: Threshold, Ratio, Attack, Release, Makeup Gain, Dry Blend
+    // 신호 레벨을 자동으로 제어하여 큰 다이나믹 레인지를 일정 범위로 압축한다.
+    // Dry Blend로 컴프레서 원본 신호와 처리 신호를 섞어 음감의 자연스러움을 조절한다.
+    compressorBlock = std::make_unique<EffectBlock> (
+        "Compressor", p.apvts, "comp_enabled",
+        juce::StringArray { "comp_threshold", "comp_ratio", "comp_attack",
+                            "comp_release", "comp_makeup", "comp_dry_blend" },
+        juce::StringArray { "Thresh", "Ratio", "Attack", "Release", "Makeup", "Blend" });
+    compressorBlock->onExpandChange = expandCb;
+    addAndMakeVisible (*compressorBlock);
 
     // --- 그래픽 EQ 패널 (10밴드 Constant-Q EQ) ---
     graphicEQPanel.onExpandChange = expandCb;
@@ -65,10 +90,24 @@ ContentComponent::ContentComponent (PluginProcessor& p)
     chorusBlock->onExpandChange = expandCb;
     addAndMakeVisible (*chorusBlock);
 
+    // --- Delay EffectBlock (Post-FX) ---
+    // 4개 노브 파라미터: Time, Feedback, Damping, Mix
+    // 1개 ComboBox 파라미터: Note Value (1/4, 1/8, 1/8 점, 1/16, 1/4 삼연음)
+    // 1개 추가 토글 파라미터: BPM Sync (수동 시간 vs BPM 자동 계산 선택)
+    //
+    // Time: 딜레이 시간 (10~2000ms)
+    // Feedback: 반복 에코 강도 (0~0.95, 1.0 이상 발산)
+    // Damping: 피드백 경로 고음 감쇠 (0=밝음, 1=어두움)
+    // Mix: 원본/딜레이 블렌드 (0=원본만, 1=딜레이만)
+    // BPM Sync: ON 시 DAW BPM에 따라 딜레이 시간 자동 계산
     delayBlock = std::make_unique<EffectBlock> (
         "Delay", p.apvts, "delay_enabled",
         juce::StringArray { "delay_time", "delay_feedback", "delay_damping", "delay_mix" },
-        juce::StringArray { "Time", "Feedback", "Damp", "Mix" });
+        juce::StringArray { "Time", "Feedback", "Damp", "Mix" },
+        juce::StringArray { "delay_note_value" },
+        juce::StringArray { "Note" },
+        juce::StringArray { "delay_bpm_sync" },
+        juce::StringArray { "BPM Sync" });
     delayBlock->onExpandChange = expandCb;
     addAndMakeVisible (*delayBlock);
 
@@ -95,20 +134,26 @@ int ContentComponent::calculateNeededHeight() const
     const int diBlendH = diBlendPanel.getExpanded()  ? DIBlendPanel::expandedHeight : DIBlendPanel::collapsedHeight;
     const int geqH     = graphicEQPanel.getExpanded() ? GraphicEQPanel::expandedHeight : GraphicEQPanel::collapsedHeight;
 
-    // --- 신호 체인 전체 높이 합산 (순서: 튜너 → BiAmp → Pre-FX → 앰프 → Post-FX → DIBlend → 캐비닛) ---
-    return 42 + 4                           // TunerDisplay(크로매틱 튜너) + 간격
-         + biAmpH + 4                       // BiAmpPanel(크로스오버) + 간격
-         + fxH (*overdriveBlock)      + 2   // Overdrive(Pre-FX) 이펙트
-         + fxH (*octaverBlock)        + 2   // Octaver(Pre-FX) 이펙트
-         + fxH (*envelopeFilterBlock) + 4   // EnvelopeFilter(Pre-FX) + 간격
-         + 290 + 4                          // AmpPanel(톤스택 + 드라이브) + 간격
-         + geqH + 4                         // GraphicEQPanel(10밴드 EQ) + 간격
-         + fxH (*chorusBlock)   + 2         // Chorus(Post-FX) 이펙트
-         + fxH (*delayBlock)    + 2         // Delay(Post-FX) 이펙트
-         + fxH (*reverbBlock)   + 4         // Reverb(Post-FX) + 간격
-         + diBlendH + 4                     // DIBlendPanel(클린 DI 혼합) + 간격
+    // --- 신호 체인 전체 높이 합산 ---
+    // UI 배치 순서: 튜너 → 신호 체인(NoiseGate→Compressor→BiAmp→Pre-FX→앰프→GEQ→Post-FX) → DIBlend → 캐비닛
+    // 각 블록의 높이는 접힘/펼침 상태에 따라 동적으로 결정된다.
+    // 이 합계가 ContentComponent의 필요 높이가 되며,
+    // Viewport는 이 높이에 따라 스크롤 바를 자동으로 조정한다.
+    return 42 + 4                           // TunerDisplay(크로매틱 튜너) + 간격(4px)
+         + fxH (*noiseGateBlock)  + 2       // NoiseGate(신호 체인 최선두) + 간격
+         + fxH (*compressorBlock) + 4       // Compressor(NoiseGate 다음) + 간격
+         + biAmpH + 4                       // BiAmpPanel(크로스오버: LP/HP 분할) + 간격
+         + fxH (*overdriveBlock)      + 2   // Overdrive(Pre-FX: 최초 왜곡 스테이지)
+         + fxH (*octaverBlock)        + 2   // Octaver(Pre-FX: 서브/옥타브 생성)
+         + fxH (*envelopeFilterBlock) + 4   // EnvelopeFilter(Pre-FX: 동적 필터) + 간격
+         + 290 + 4                          // AmpPanel(톤스택 + 드라이브/프레전스/새그) + 간격
+         + geqH + 4                         // GraphicEQPanel(10밴드 Constant-Q EQ) + 간격
+         + fxH (*chorusBlock)   + 2         // Chorus(Post-FX: 모듈레이션)
+         + fxH (*delayBlock)    + 2         // Delay(Post-FX: 딜레이/에코 + BPM Sync)
+         + fxH (*reverbBlock)   + 4         // Reverb(Post-FX: 알고리즘 리버브) + 간격
+         + diBlendH + 4                     // DIBlendPanel(클린DI + 처리신호 블렌드) + 간격
          + 95                               // CabinetSelector(스피커 IR 선택, 고정 높이)
-         + 10;                              // 하단 여백
+         + 10;                              // 하단 여백(스크롤 편의성)
 }
 
 void ContentComponent::resized()
@@ -121,6 +166,14 @@ void ContentComponent::resized()
 
     // TunerDisplay
     tunerDisplay.setBounds (area.removeFromTop (42));
+    area.removeFromTop (4);
+
+    // NoiseGate (신호 체인 선두)
+    noiseGateBlock->setBounds (area.removeFromTop (fxH (*noiseGateBlock)));
+    area.removeFromTop (2);
+
+    // Compressor (NoiseGate 다음)
+    compressorBlock->setBounds (area.removeFromTop (fxH (*compressorBlock)));
     area.removeFromTop (4);
 
     // BiAmp (Pre-FX 위)
@@ -200,7 +253,7 @@ void PluginEditor::paint (juce::Graphics& g)
 
     g.setColour (juce::Colour (0xff666688));
     g.setFont (juce::FontOptions (11.0f));
-    g.drawFittedText ("Phase 6 -- BiAmp + DIBlend + AmpVoicing",
+    g.drawFittedText ("Phase 7 -- PowerAmp Voicing + Delay BPM Sync + Gate/Comp UI",
                       0, getHeight() - footerHeight, getWidth(), footerHeight,
                       juce::Justification::centred, 1);
 }

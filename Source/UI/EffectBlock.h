@@ -44,6 +44,8 @@ public:
      * @param paramLabels    각 노브 아래 표시할 라벨 배열
      * @param comboParamIds  ComboBox에 연결할 파라미터 ID 배열 (선택 사항)
      * @param comboLabels    각 ComboBox 아래 표시할 라벨 배열 (선택 사항)
+     * @param toggleParamIds 추가 토글 버튼에 연결할 파라미터 ID 배열 (선택 사항)
+     * @param toggleLabels   각 토글 버튼에 표시할 라벨 배열 (선택 사항)
      * @note 파라미터 노브 수는 paramIds 배열 크기로 결정된다
      */
     EffectBlock (const juce::String& name,
@@ -52,7 +54,9 @@ public:
                  const juce::StringArray& paramIds,
                  const juce::StringArray& paramLabels,
                  const juce::StringArray& comboParamIds = {},
-                 const juce::StringArray& comboLabels = {});
+                 const juce::StringArray& comboLabels = {},
+                 const juce::StringArray& toggleParamIds = {},
+                 const juce::StringArray& toggleLabels = {});
 
     ~EffectBlock() override;
 
@@ -63,11 +67,16 @@ public:
     bool getExpanded() const { return expanded; }
 
     /**
-     * @brief 접기/펼치기 상태를 설정한다.
+     * @brief 이펙터 블록 접기/펼치기 상태를 설정한다.
      *
-     * @param shouldBeExpanded  true = 펼침(노브 표시), false = 접힘(헤더만 표시)
-     * @note 상태 변경 시 노브 가시성을 토글하고,
-     *       onExpandChange 콜백을 호출하여 PluginEditor의 레이아웃 재계산을 트리거한다.
+     * @param shouldBeExpanded  true = 펼침(파라미터 노브 전체 표시), false = 접힘(헤더만 표시)
+     *
+     * **상태 변화 효과**:
+     * - 상태 변경 시 모든 노브/ComboBox/토글의 가시성을 일괄 토글
+     * - 확장 버튼 텍스트 변경: ">" (접힘) ↔ "v" (펼침)
+     * - onExpandChange 콜백 호출 → PluginEditor의 전체 창 높이 자동 재계산
+     *
+     * @note [메인 스레드] UI 클릭 등으로 호출. resized() 레이아웃 재계산 트리거함.
      */
     void setExpanded (bool shouldBeExpanded);
 
@@ -95,6 +104,10 @@ private:
     juce::OwnedArray<juce::ComboBox> combos;
     juce::OwnedArray<juce::Label> comboLabelComponents;
     juce::OwnedArray<juce::AudioProcessorValueTreeState::ComboBoxAttachment> comboAttachments;
+
+    // 추가 토글 버튼 배열 (예: Delay BPM Sync)
+    juce::OwnedArray<juce::ToggleButton> extraToggles;
+    juce::OwnedArray<juce::AudioProcessorValueTreeState::ButtonAttachment> extraToggleAttachments;
 
     // 현재 상태: false = 접힘(기본), true = 펼침
     bool expanded = false;

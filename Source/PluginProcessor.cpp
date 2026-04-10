@@ -84,6 +84,27 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (int ch = getTotalNumInputChannels(); ch < getTotalNumOutputChannels(); ++ch)
         buffer.clear (ch, 0, buffer.getNumSamples());
 
+    // --- BPM 동기화: AudioPlayHead에서 BPM을 추출하여 Delay에 전달 ---
+    // DAW의 타이밍 정보(AudioPlayHead)로부터 현재 BPM을 읽어서
+    // Delay의 BPM Sync 기능에 제공한다.
+    // Standalone 모드에서는 PlayHead가 없으므로 120 BPM 기본값 사용.
+    {
+        double bpm = 120.0;  // Standalone 모드 기본값
+        if (auto* ph = getPlayHead())
+        {
+            // getPosition()은 std::optional로 반환되므로 hasValue() 확인 필수
+            if (auto posInfo = ph->getPosition())
+            {
+                // BPM 정보가 있으면 읽어서 적용
+                // VST3/AU 호스트에서는 대부분 BPM을 제공한다.
+                if (posInfo->getBpm().hasValue())
+                    bpm = *posInfo->getBpm();
+            }
+        }
+        // 추출한 BPM을 Delay DSP 모듈로 전달 (atomic으로 RT-safe)
+        signalChain.getDelay().setBpm (bpm);
+    }
+
     // --- 신호 체인 처리 (모노) ---
     // Gate → Tuner → Compressor → BiAmp Crossover → Pre-FX → Amp → Post-FX → PowerAmp → Cabinet → DIBlend
     signalChain.process (buffer);
@@ -480,6 +501,13 @@ PluginProcessor::createParameterLayout()
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { "delay_mix", 1 }, "Delay Mix",
         juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f));
+
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "delay_bpm_sync", 1 }, "Delay BPM Sync", false));
+
+    params.push_back (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { "delay_note_value", 1 }, "Delay Note",
+        juce::StringArray { "1/4", "1/8", "1/8 dot", "1/16", "1/4 trip" }, 0));
 
     //--------------------------------------------------------------------------
     // BiAmp Crossover

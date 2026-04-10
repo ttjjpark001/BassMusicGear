@@ -42,6 +42,9 @@ public:
     AmpPanel        ampPanel;
     CabinetSelector cabinetSelector;
 
+    std::unique_ptr<EffectBlock> noiseGateBlock;
+    std::unique_ptr<EffectBlock> compressorBlock;
+
     std::unique_ptr<EffectBlock> overdriveBlock;
     std::unique_ptr<EffectBlock> octaverBlock;
     std::unique_ptr<EffectBlock> envelopeFilterBlock;

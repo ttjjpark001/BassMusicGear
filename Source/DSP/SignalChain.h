@@ -57,6 +57,7 @@ public:
     Cabinet& getCabinet() { return cabinet; }
     Tuner& getTuner() { return tuner; }
     Compressor& getCompressor() { return compressor; }
+    Delay& getDelay() { return delay; }
 
 private:
     /** IR 이름 문자열을 cab_ir 파라미터 인덱스(0~4)로 변환한다. */

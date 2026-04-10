@@ -444,11 +444,48 @@ PowerAmp 포화가 없던 상태에서는 AmpVoicing 값을 강하게 올려야 
    - 강화된 값이 더 자연스럽다면 → 현재 값 유지
    - 중간값이 더 좋다면 → 조정
 
+#### Voicing 값 비교표
+
+git 커밋 `6b6278c` (Phase 6 최초 등록) vs 현재 구현값을 추출하여 문서화한다.
+
+| 앰프 | 밴드 | 최초 적용값 | 현재 강화값 |
+|------|------|------------|------------|
+| **American Vintage** | LowShelf 80Hz | +3 dB | **+6 dB** |
+| | Peak 300Hz Q=0.8 | +2 dB | **+3 dB** |
+| | Peak 1500Hz Q=1.2 | -2 dB | **-4 dB** |
+| **Tweed Bass** | LowShelf 60Hz | +2 dB | **+4 dB** |
+| | Peak 600Hz Q=0.7 | -3 dB | **-6 dB** |
+| | HighShelf 5000Hz | -2 dB | **-4 dB** |
+| **British Stack** | HighPass 60Hz Q=0.7 | (게인 없음) | (동일) |
+| | Peak 500Hz Q=1.0 | +3 dB | **+6 dB** |
+| | Peak 2000Hz Q=1.5 | +2 dB | **+4 dB** |
+| **Modern Micro** | HighPass 80Hz Q=0.7 | (게인 없음) | (동일) |
+| | Peak 900Hz Q=1.2 | +2 dB | **+4 dB** |
+| | Peak 3000Hz Q=1.5 | +4 dB | **+8 dB** |
+| **Italian Clean** | Flat | — | (동일) |
+| | Peak 6000Hz Q=1.5 | +1.5 dB | **+3 dB** |
+| | Flat | — | (동일) |
+| **Origin Pure** | 전 밴드 Flat | — | (동일, 변화 없음) |
+
+> 요약: 강화 시 gain 절댓값이 **2배**로 증가됨. Q값과 주파수는 변경 없음.
+
+재테스트 시 최초 적용값으로 되돌리는 방법:
+```cpp
+// AmpModelLibrary.cpp voicingBands — 최초 적용값 (복원 시 사용)
+// AmericanVintage: { 80, +3, 0.707f, LowShelf }, { 300, +2, 0.8f, Peak }, { 1500, -2, 1.2f, Peak }
+// TweedBass:       { 60, +2, 0.707f, LowShelf }, { 600, -3, 0.7f, Peak }, { 5000, -2, 0.707f, HighShelf }
+// BritishStack:    { 60, 0, 0.7f, HighPass },    { 500, +3, 1.0f, Peak }, { 2000, +2, 1.5f, Peak }
+// ModernMicro:     { 80, 0, 0.7f, HighPass },    { 900, +2, 1.2f, Peak }, { 3000, +4, 1.5f, Peak }
+// ItalianClean:    { 1000, 0, 1.0f, Flat },       { 6000, +1.5, 1.5f, Peak }, { 1000, 0, 1.0f, Flat }
+// OriginPure:      전 밴드 Flat (변화 없음)
+```
+
 #### 관련 파일
 
 - `Source/DSP/AmpVoicing.cpp` — 현재 강화된 voicingBands 계수 적용
-- `Source/Models/AmpModelLibrary.cpp` — 앰프별 voicingBands 배열 정의
-- `AmpVoicingPlan.md` 섹션 3 — 최초 설계값 / 섹션 13-1 — 캐리커처 방향 재설계 검토값
+- `Source/Models/AmpModelLibrary.cpp` — 앰프별 voicingBands 배열 정의 (현재 강화값)
+- `AmpVoicingPlan.md` 섹션 3 — **현재 구현된 강화값** (위 비교표의 "현재 강화값" 열과 동일)
+- `AmpVoicingPlan.md` 섹션 13-1 — 캐리커처 방향 재설계 검토값
 
 ---
 

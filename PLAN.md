@@ -711,12 +711,12 @@ PLAN.md의 Phase 10을 구현해줘. PRD.md 섹션 13과 CLAUDE.md AudioDeviceMa
 |---|---|---|---|
 | Phase 1 | PowerAmp Sag | Phase 2 | ✅ (Phase 2에서 완료) |
 | Phase 1 | 커스텀 IR 파일 로드 (`Cabinet::loadIR(File)`) | Phase 6 | ✅ (Phase 1에서 조기 완료) |
-| Phase 1 | NoiseGate EffectBlock UI | Phase 7 | ☐ |
-| Phase 2 | PowerAmp 앰프별 포화 차별화 | Phase 7 | ☐ |
+| Phase 1 | NoiseGate EffectBlock UI | Phase 7 | ✅ (Phase 7에서 완료) |
+| Phase 2 | PowerAmp 앰프별 포화 차별화 | Phase 7 | ✅ (Phase 7에서 완료) |
 | Phase 2 | 앰프 모델별 UI 색상 테마 (Phase 6 라벨 부분 적용 → Phase 9 LookAndFeel 전면 통합) | Phase 9 | ☐ (부분 적용됨) |
 | Phase 2 | 실제 캐비닛 IR 파일 연결 (8x10 SVT / 4x10 JBL / 1x15 Vintage / 2x12 British / 2x10 Modern) | Phase 10 | ☐ |
-| Phase 3 | Compressor EffectBlock UI | Phase 7 | ☐ |
+| Phase 3 | Compressor EffectBlock UI | Phase 7 | ✅ (Phase 7에서 완료) |
 | Phase 3 | Compressor 게인 리덕션 VUMeter 연동 | Phase 9 | ☐ |
 | Phase 3 | 튜너 참조 주파수 UI (`tuner_reference_a`) | Phase 9 | ☐ |
 | Phase 4 | Octaver Oct-Up 음질 개선 | Phase 8 | ✅ (Phase 5에서 완료) |
-| Phase 5 | Delay BPM Sync | Phase 7 | ☐ |
+| Phase 5 | Delay BPM Sync | Phase 7 | ✅ (Phase 7에서 완료) |

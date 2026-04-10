@@ -72,7 +72,7 @@ juce_add_plugin(BassMusicGear
 #==============================================================================
 juce_add_binary_data(BassMusicGear_BinaryData
     SOURCES
-        
+
         Resources/IR/ir_1x15_vintage.wav
         Resources/IR/ir_2x10_modern.wav
         Resources/IR/ir_2x12_british.wav
@@ -80,6 +80,22 @@ juce_add_binary_data(BassMusicGear_BinaryData
         Resources/IR/ir_8x10_svt.wav
         Resources/IR/placeholder_ir.wav
         Resources/placeholder.txt
+        # Phase 8: 팩토리 프리셋 15종 (5 모델 × Clean/Driven/Heavy)
+        Resources/Presets/Factory_AmericanVintage_Clean.xml
+        Resources/Presets/Factory_AmericanVintage_Driven.xml
+        Resources/Presets/Factory_AmericanVintage_Heavy.xml
+        Resources/Presets/Factory_TweedBass_Clean.xml
+        Resources/Presets/Factory_TweedBass_Driven.xml
+        Resources/Presets/Factory_TweedBass_Heavy.xml
+        Resources/Presets/Factory_BritishStack_Clean.xml
+        Resources/Presets/Factory_BritishStack_Driven.xml
+        Resources/Presets/Factory_BritishStack_Heavy.xml
+        Resources/Presets/Factory_ModernMicro_Clean.xml
+        Resources/Presets/Factory_ModernMicro_Driven.xml
+        Resources/Presets/Factory_ModernMicro_Heavy.xml
+        Resources/Presets/Factory_ItalianClean_Clean.xml
+        Resources/Presets/Factory_ItalianClean_Driven.xml
+        Resources/Presets/Factory_ItalianClean_Heavy.xml
 )
 
 # BinaryData 라이브러리는 공유 라이브러리(.so)로 링크될 수 있으므로
@@ -154,6 +170,11 @@ target_sources(BassMusicGear
         Source/Models/AmpModel.h
         Source/Models/AmpModelLibrary.h
         Source/Models/AmpModelLibrary.cpp
+        # Phase 8: 프리셋 시스템 + PresetPanel UI
+        Source/Presets/PresetManager.h
+        Source/Presets/PresetManager.cpp
+        Source/UI/PresetPanel.h
+        Source/UI/PresetPanel.cpp
 )
 
 #==============================================================================

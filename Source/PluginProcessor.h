@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "DSP/SignalChain.h"
+#include "Presets/PresetManager.h"
 
 /**
  * @brief BassMusicGear 플러그인 오디오 프로세서
@@ -25,7 +26,7 @@
  * **JUCE 패턴**:
  * - prepareToPlay: 샘플레이트, 버퍼 크기 초기화, 총 PDC 지연 보고
  * - processBlock: 매 버퍼마다 오디오 스레드에서 호출 (실시간 제약: malloc/파일I/O 금지)
- * - timerCallback (Timer): 메인 스레드 ~100ms 간격으로 호출, 톤 컨트롤 계수 갱신
+ * - timerCallback (Timer): 메인 스레드 ~33ms 간격(30Hz)으로 호출, 톤 컨트롤 계수 갱신
  * - getStateInformation / setStateInformation: 프리셋 저장/로드 (APVTS 직렬화)
  */
 class PluginProcessor final : public juce::AudioProcessor,
@@ -140,6 +141,22 @@ public:
      */
     SignalChain& getSignalChain() { return signalChain; }
 
+    /** PresetManager 접근자 (UI에서 프리셋 목록/저장/로드에 사용) */
+    PresetManager& getPresetManager() { return presetManager; }
+
+    //==========================================================================
+    // A/B 슬롯 — 현재 상태를 두 개의 임시 슬롯에 저장/복원하여 즉시 비교
+    //==========================================================================
+
+    /** 현재 APVTS 상태를 A(0) 또는 B(1) 슬롯에 복사 */
+    void saveToSlot (int slot);
+
+    /** A(0) 또는 B(1) 슬롯에 저장된 상태를 APVTS에 복원 */
+    void loadFromSlot (int slot);
+
+    /** 슬롯에 데이터가 있는지 확인 */
+    bool isSlotValid (int slot) const;
+
 private:
     /**
      * @brief 타이머 콜백: 메인 스레드에서 ~100ms마다 호출
@@ -170,6 +187,25 @@ private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     SignalChain signalChain;    // 모든 DSP 블록을 관리하는 신호 체인
+
+    // 프리셋 매니저 — 팩토리 15종 + 사용자 .bmg 파일 I/O
+    PresetManager presetManager { apvts };
+
+    // A/B 슬롯 — 즉시 전환 비교용 임시 ValueTree 저장소
+    juce::ValueTree slotA;
+    juce::ValueTree slotB;
+
+    /**
+     * @brief Active/Passive 입력 패드 파라미터 포인터
+     *
+     * processBlock() 최상단에서 atomic load로 읽어 입력 신호에 -10dB 게인 적용 여부 결정.
+     * Passive(false, 기본값) vs Active(true, -10dB 감쇄).
+     * Active 픽업 베이스는 출력이 크므로 프리앰프 헤드룸 확보 목적.
+     *
+     * @note [오디오 스레드] atomic load 연산만 수행 (RT 안전).
+     *       락 없음, malloc/new 없음, 파일 I/O 없음.
+     */
+    std::atomic<float>* inputActiveParam = nullptr;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginProcessor)
 };

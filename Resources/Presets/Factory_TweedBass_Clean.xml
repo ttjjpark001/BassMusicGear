@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS>
+  <PARAM id="amp_model" value="1"/>
+  <PARAM id="input_gain" value="4.0"/>
+  <PARAM id="volume" value="0.0"/>
+  <PARAM id="bass" value="0.6"/>
+  <PARAM id="mid" value="0.5"/>
+  <PARAM id="treble" value="0.45"/>
+  <PARAM id="drive" value="0.15"/>
+  <PARAM id="presence" value="0.4"/>
+  <PARAM id="sag" value="0.2"/>
+  <PARAM id="cab_bypass" value="0"/>
+  <PARAM id="cab_ir" value="1"/>
+  <PARAM id="comp_enabled" value="1"/>
+  <PARAM id="comp_threshold" value="-16.0"/>
+  <PARAM id="comp_ratio" value="2.5"/>
+  <PARAM id="comp_makeup" value="1.0"/>
+</PARAMETERS>

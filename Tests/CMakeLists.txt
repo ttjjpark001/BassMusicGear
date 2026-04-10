@@ -13,6 +13,12 @@ add_executable(BassMusicGear_Tests
     AmpVoicingTest.cpp
     PowerAmpTest.cpp
     DelayBpmSyncTest.cpp
+    # Phase 8 CARRY + 신규 테스트
+    NoiseGateTest.cpp
+    PreampTest.cpp
+    TunerTest.cpp
+    PresetTest.cpp
+    InputPadTest.cpp
 )
 
 # Add DSP source files needed by tests (compiled separately from plugin target)
@@ -33,6 +39,9 @@ target_sources(BassMusicGear_Tests
         "${CMAKE_SOURCE_DIR}/Source/DSP/AmpVoicing.cpp"
         "${CMAKE_SOURCE_DIR}/Source/DSP/PowerAmp.cpp"
         "${CMAKE_SOURCE_DIR}/Source/Models/AmpModelLibrary.cpp"
+        # Phase 8 CARRY — NoiseGate / Tuner 테스트에 필요한 추가 소스
+        "${CMAKE_SOURCE_DIR}/Source/DSP/Effects/NoiseGate.cpp"
+        "${CMAKE_SOURCE_DIR}/Source/DSP/Tuner.cpp"
 )
 
 target_compile_features(BassMusicGear_Tests PRIVATE cxx_std_17)

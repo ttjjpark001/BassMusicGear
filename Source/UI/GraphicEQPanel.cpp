@@ -40,23 +40,33 @@ GraphicEQPanel::GraphicEQPanel (juce::AudioProcessorValueTreeState& apvts)
     //   ID=1: (Custom) — 사용자 수동 조정 시 자동 표시됨 (읽기 전용)
     //   ID=2~7: 프리셋 (Flat, Bass Boost, Scoop Mid, Presence, Vintage Warmth, Hi-Fi)
     // onChange: ID >= 2이면 applyPreset(id) 호출 → 10밴드 값 일괄 로드
-    presetCombo.addItem ("(Custom)",       1);
-    presetCombo.addItem ("Flat",           2);
-    presetCombo.addItem ("Bass Boost",     3);
-    presetCombo.addItem ("Scoop Mid",      4);
-    presetCombo.addItem ("Presence",       5);
-    presetCombo.addItem ("Vintage Warmth", 6);
-    presetCombo.addItem ("Hi-Fi",          7);
-    presetCombo.setSelectedId (1, juce::dontSendNotification);
     presetCombo.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff3a3a5a));
     presetCombo.setColour (juce::ComboBox::textColourId,       juce::Colours::white);
     presetCombo.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xff444466));
     presetCombo.setColour (juce::ComboBox::arrowColourId,      juce::Colour (0xffff8800));
+
+    // 빌트인 + 유저 프리셋 드롭다운 구성
+    refreshPresetCombo();
+
     presetCombo.onChange = [this]
     {
         const int id = presetCombo.getSelectedId();
-        if (id >= 2)
+        if (id >= 2 && id <= 7)
+        {
             applyPreset (id);
+        }
+        else if (id == savePresetMenuId)
+        {
+            // 선택 후 UI는 "(Custom)"으로 되돌리고 저장 다이얼로그 표시
+            presetCombo.setSelectedId (1, juce::dontSendNotification);
+            saveCurrentAsUserPreset();
+        }
+        else if (id >= userPresetIdBase)
+        {
+            const int userIdx = id - userPresetIdBase;
+            if (userIdx >= 0 && userIdx < userPresetNames.size())
+                applyUserPreset (userPresetNames[userIdx]);
+        }
     };
     addAndMakeVisible (presetCombo);
 
@@ -202,6 +212,179 @@ void GraphicEQPanel::applyPreset (int presetId)
     isApplyingPreset = false;
 }
 
+//==============================================================================
+// Phase 8: 사용자 EQ 프리셋 (저장/불러오기/삭제)
+//==============================================================================
+
+juce::File GraphicEQPanel::getUserEqPresetDirectory()
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+               .getChildFile ("BassMusicGear")
+               .getChildFile ("EQPresets");
+}
+
+void GraphicEQPanel::refreshPresetCombo()
+{
+    presetCombo.clear (juce::dontSendNotification);
+
+    // 1) "(Custom)" 및 빌트인 6종
+    presetCombo.addItem ("(Custom)",       1);
+    presetCombo.addItem ("Flat",           2);
+    presetCombo.addItem ("Bass Boost",     3);
+    presetCombo.addItem ("Scoop Mid",      4);
+    presetCombo.addItem ("Presence",       5);
+    presetCombo.addItem ("Vintage Warmth", 6);
+    presetCombo.addItem ("Hi-Fi",          7);
+
+    // 2) 사용자 프리셋 디렉터리 스캔
+    userPresetNames.clear();
+    auto dir = getUserEqPresetDirectory();
+    if (dir.isDirectory())
+    {
+        auto files = dir.findChildFiles (juce::File::findFiles, false, "*.xml");
+        for (const auto& f : files)
+            userPresetNames.add (f.getFileNameWithoutExtension());
+        userPresetNames.sort (true);
+    }
+
+    // 3) "Save Preset..." 항목 + 사용자 프리셋 목록을 구분선 아래로 배치
+    presetCombo.addSeparator();
+    presetCombo.addItem ("Save Preset...", savePresetMenuId);
+
+    if (userPresetNames.size() > 0)
+    {
+        presetCombo.addSeparator();
+        presetCombo.addSectionHeading ("User Presets");
+        for (int i = 0; i < userPresetNames.size(); ++i)
+            presetCombo.addItem (userPresetNames[i], userPresetIdBase + i);
+    }
+
+    presetCombo.setSelectedId (1, juce::dontSendNotification);
+}
+
+void GraphicEQPanel::saveCurrentAsUserPreset()
+{
+    auto* aw = new juce::AlertWindow ("Save EQ Preset",
+                                      "Enter a name for this EQ curve:",
+                                      juce::MessageBoxIconType::NoIcon);
+    aw->addTextEditor ("name", "", "Name:");
+    aw->addButton ("Save",   1, juce::KeyPress (juce::KeyPress::returnKey));
+    aw->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+
+    aw->enterModalState (true,
+        juce::ModalCallbackFunction::create ([this, aw] (int result)
+        {
+            if (result == 1)
+            {
+                auto name = aw->getTextEditorContents ("name").trim();
+                // 파일 시스템에 부적합한 문자 제거
+                name = juce::File::createLegalFileName (name);
+                if (name.isNotEmpty())
+                {
+                    // 10밴드 현재 값을 XML로 직렬화
+                    auto xml = std::make_unique<juce::XmlElement> ("EQPreset");
+                    xml->setAttribute ("name", name);
+                    for (int i = 0; i < numBands; ++i)
+                    {
+                        if (auto* p = apvtsRef.getParameter (bandParamIds[i]))
+                        {
+                            auto* band = xml->createNewChildElement ("Band");
+                            band->setAttribute ("id", bandParamIds[i]);
+                            band->setAttribute ("gainDb",
+                                (double) p->getNormalisableRange().convertFrom0to1 (p->getValue()));
+                        }
+                    }
+
+                    auto dir = getUserEqPresetDirectory();
+                    if (! dir.exists())
+                        dir.createDirectory();
+
+                    auto file = dir.getChildFile (name + ".xml");
+                    xml->writeTo (file);
+
+                    // 드롭다운 재구성 후 새로 저장된 프리셋 선택
+                    refreshPresetCombo();
+                    for (int i = 0; i < userPresetNames.size(); ++i)
+                    {
+                        if (userPresetNames[i] == name)
+                        {
+                            presetCombo.setSelectedId (userPresetIdBase + i,
+                                                       juce::dontSendNotification);
+                            break;
+                        }
+                    }
+                }
+            }
+            delete aw;
+        }));
+}
+
+void GraphicEQPanel::applyUserPreset (const juce::String& presetName)
+{
+    auto file = getUserEqPresetDirectory().getChildFile (presetName + ".xml");
+    if (! file.existsAsFile())
+        return;
+
+    auto xml = juce::XmlDocument::parse (file);
+    if (xml == nullptr || ! xml->hasTagName ("EQPreset"))
+        return;
+
+    isApplyingPreset = true;
+    for (auto* band : xml->getChildWithTagNameIterator ("Band"))
+    {
+        const auto id = band->getStringAttribute ("id");
+        const float gainDb = (float) band->getDoubleAttribute ("gainDb", 0.0);
+        if (auto* p = apvtsRef.getParameter (id))
+            p->setValueNotifyingHost (p->convertTo0to1 (gainDb));
+    }
+    isApplyingPreset = false;
+}
+
+void GraphicEQPanel::mouseDown (const juce::MouseEvent& e)
+{
+    // 사용자 EQ 프리셋을 우클릭으로 삭제 (presetCombo 영역에서만 동작)
+    if (! e.mods.isRightButtonDown())
+        return;
+
+    // presetCombo의 경계 내부에서 발생한 우클릭만 처리
+    if (! presetCombo.getBounds().contains (e.getPosition()))
+        return;
+
+    const int id = presetCombo.getSelectedId();
+    if (id < userPresetIdBase)
+        return;
+
+    const int userIdx = id - userPresetIdBase;
+    if (userIdx < 0 || userIdx >= userPresetNames.size())
+        return;
+
+    deleteUserPreset (userPresetNames[userIdx]);
+}
+
+void GraphicEQPanel::deleteUserPreset (const juce::String& presetName)
+{
+    auto file = getUserEqPresetDirectory().getChildFile (presetName + ".xml");
+    if (! file.existsAsFile())
+        return;
+
+    juce::AlertWindow::showAsync (
+        juce::MessageBoxOptions()
+            .withIconType (juce::MessageBoxIconType::QuestionIcon)
+            .withTitle ("Delete EQ Preset")
+            .withMessage ("Delete user EQ preset \"" + presetName + "\"?")
+            .withButton ("Delete")
+            .withButton ("Cancel"),
+        [this, file] (int result)
+        {
+            if (result == 1)
+            {
+                file.deleteFile();
+                refreshPresetCombo();
+            }
+        });
+}
+
+//==============================================================================
 GraphicEQPanel::~GraphicEQPanel() = default;
 
 /**

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS>
+  <PARAM id="amp_model" value="2"/>
+  <PARAM id="input_gain" value="6.0"/>
+  <PARAM id="volume" value="-1.0"/>
+  <PARAM id="bass" value="0.5"/>
+  <PARAM id="mid" value="0.55"/>
+  <PARAM id="treble" value="0.55"/>
+  <PARAM id="drive" value="0.25"/>
+  <PARAM id="presence" value="0.55"/>
+  <PARAM id="sag" value="0.3"/>
+  <PARAM id="cab_bypass" value="0"/>
+  <PARAM id="cab_ir" value="3"/>
+</PARAMETERS>

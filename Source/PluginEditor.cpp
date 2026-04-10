@@ -222,8 +222,24 @@ void ContentComponent::resized()
 PluginEditor::PluginEditor (PluginProcessor& p)
     : AudioProcessorEditor (&p),
       processorRef (p),
+      presetPanel (p),
       content (p)
 {
+    // --- Phase 8: 프리셋 패널 (헤더 영역) ---
+    addAndMakeVisible (presetPanel);
+
+    // --- Phase 8: Active/Passive 입력 패드 토글 ---
+    // Passive (기본, 토글 꺼짐) vs Active (-10dB, 토글 켜짐)
+    // Active 선택 시 강조색(붉은 계열) 틱 표시
+    inputActiveToggle.setButtonText ("Active");
+    inputActiveToggle.setColour (juce::ToggleButton::textColourId, juce::Colours::white);
+    inputActiveToggle.setColour (juce::ToggleButton::tickColourId, juce::Colour (0xffff3344));
+    inputActiveToggle.setTooltip ("Active pickup (-10 dB input pad)");
+    addAndMakeVisible (inputActiveToggle);
+
+    inputActiveAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+        p.apvts, "input_active", inputActiveToggle);
+
     // ContentComponent 높이 변경 시 Viewport 콘텐츠 크기 갱신
     content.onHeightChanged = [this] { updateContentSize(); };
 
@@ -253,7 +269,7 @@ void PluginEditor::paint (juce::Graphics& g)
 
     g.setColour (juce::Colour (0xff666688));
     g.setFont (juce::FontOptions (11.0f));
-    g.drawFittedText ("Phase 7 -- PowerAmp Voicing + Delay BPM Sync + Gate/Comp UI",
+    g.drawFittedText ("Phase 8 -- Presets + Active/Passive + GEQ User Presets",
                       0, getHeight() - footerHeight, getWidth(), footerHeight,
                       juce::Justification::centred, 1);
 }
@@ -263,6 +279,14 @@ void PluginEditor::resized()
     auto area = getLocalBounds();
     area.removeFromTop (titleHeight);
     area.removeFromBottom (footerHeight);
+
+    // Phase 8 헤더: PresetPanel + Active/Passive 토글 (좌: preset, 우: 토글)
+    auto headerRow = area.removeFromTop (presetBarHeight).reduced (4, 4);
+    auto toggleArea = headerRow.removeFromRight (80);
+    inputActiveToggle.setBounds (toggleArea);
+    headerRow.removeFromRight (6);
+    presetPanel.setBounds (headerRow);
+
     viewport.setBounds (area);
     updateContentSize();
 }

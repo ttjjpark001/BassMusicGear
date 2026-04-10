@@ -3,6 +3,17 @@
 #include "Models/AmpModelLibrary.h"
 
 //==============================================================================
+/**
+ * @brief PluginProcessor 초기화
+ *
+ * **주요 작업**:
+ * 1. 오디오 버스 설정: 입력 모노 / 출력 스테레오
+ * 2. APVTS 파라미터 레이아웃 생성
+ * 3. SignalChain에 파라미터 포인터 연결
+ * 4. 메인 스레드 타이머 시작 (30Hz, 계수 재계산용)
+ *
+ * @note [메인 스레드] 플러그인 로드 시 한 번만 호출.
+ */
 PluginProcessor::PluginProcessor()
     : AudioProcessor (BusesProperties()
                           .withInput  ("Input",  juce::AudioChannelSet::mono(),   true)
@@ -10,12 +21,19 @@ PluginProcessor::PluginProcessor()
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
     // --- APVTS 파라미터를 SignalChain 각 블록에 연결 ---
-    // 이후 processBlock()에서 atomic으로 파라미터 값을 읽을 수 있음
+    // 각 DSP 모듈(NoiseGate, Preamp, ToneStack 등)이
+    // processBlock() 내에서 atomic으로 파라미터 값을 읽을 수 있도록
     signalChain.connectParameters (apvts);
 
-    // --- 메인 스레드 30Hz 타이머 시작 ---
-    // DSP 계수 재계산(FIR/IIR 필터 계수 갱신)을 메인 스레드에서 수행
-    // processBlock() 중에는 원자적 swap으로 오디오 스레드에 전달됨
+    // --- Active/Passive 입력 패드 파라미터 포인터 캐시 ---
+    // processBlock() 최상단에서 락프리로 읽기 위해 atomic 포인터를 미리 캐시한다.
+    // Passive(false, 기본값) vs Active(true, -10dB 감쇄)
+    inputActiveParam = apvts.getRawParameterValue ("input_active");
+
+    // --- 메인 스레드 타이머 시작 (30Hz = ~33ms 간격) ---
+    // 필터 계수, 톤스택, 앰프 모델 전환 등을 메인 스레드에서 계산.
+    // 계산된 계수는 atomic 또는 FIFO로 오디오 스레드에 전달되어
+    // processBlock() 중에 원자적 swap으로 적용됨.
     startTimerHz (30);
 }
 
@@ -78,6 +96,18 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // --- Denormal 방지 (매우 작은 값의 부동소수점 연산 최적화) ---
     juce::ScopedNoDenormals noDenormals;
 
+    // --- Active/Passive 입력 패드 (RT-safe: atomic load + gain 곱셈만) ---
+    // Active 픽업 베이스는 Passive 대비 ~+10dB 출력이 크므로,
+    // input_active=true일 때 입력 신호를 -10dB(×0.3162) 감쇄하여 프리앰프
+    // 헤드룸을 맞춰준다. new/lock/파일I/O 없음 — RT 안전.
+    if (inputActiveParam != nullptr && inputActiveParam->load() > 0.5f)
+    {
+        const float activePadGain = 0.3162277660f;  // -10 dB
+        const int numInputChannels = getTotalNumInputChannels();
+        for (int ch = 0; ch < numInputChannels; ++ch)
+            buffer.applyGain (ch, 0, buffer.getNumSamples(), activePadGain);
+    }
+
     // --- 출력 채널 초기화 ---
     // 입력보다 출력이 많은 경우 (예: 모노 입력 → 스테레오 출력)
     // 여분의 출력 채널을 0으로 클리어
@@ -135,19 +165,176 @@ juce::AudioProcessorEditor* PluginProcessor::createEditor()
 bool PluginProcessor::hasEditor() const { return true; }
 
 //==============================================================================
+/**
+ * @brief APVTS 상태 전체를 바이너리 형식으로 직렬화하여 프리셋 저장
+ *
+ * @param destData  플러그인이 채울 메모리 블록 (DAW 저장소)
+ *
+ * **과정**:
+ * 1. APVTS 상태 스냅샷 추출 (copyState)
+ * 2. ValueTree → XML 변환 (createXml)
+ * 3. XML → 바이너리 직렬화 (copyXmlToBinary)
+ *
+ * @note [메인 스레드] DAW의 "Save Preset" 또는 PresetManager에서 호출.
+ *       반환된 바이너리는 DAW 파일 시스템에 저장된다.
+ */
 void PluginProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
+    // 현재 모든 파라미터 값 스냅샷 획득
     auto state = apvts.copyState();
+    // ValueTree를 XML 엘리먼트로 변환
     std::unique_ptr<juce::XmlElement> xml (state.createXml());
+    // XML을 바이너리로 변환하여 destData에 저장
     copyXmlToBinary (*xml, destData);
 }
 
+/**
+ * @brief 저장된 프리셋 바이너리를 역직렬화하여 APVTS 상태 복원
+ *
+ * @param data        프리셋 바이너리 포인터
+ * @param sizeInBytes 데이터 크기
+ *
+ * **과정**:
+ * 1. 바이너리 → XML 변환 (getXmlFromBinary)
+ * 2. 루트 엘리먼트 검증 (PARAMETERS 확인)
+ * 3. 각 <PARAM> 엘리먼트를 개별 파라미터에 적용
+ *
+ * **하위 호환 전략**:
+ * - 저장된 상태에 없는 파라미터는 현재 기본값 유지
+ * - 저장된 상태에 존재하는 파라미터만 덮어씀
+ * - 예: 이전 버전 프리셋이 새로 추가된 파라미터를 건드리지 않음
+ *
+ * @note [메인 스레드] DAW의 "Load Preset" 또는 프리셋 복원 시 호출.
+ *       정규화 변환: raw 값(예: -20dB) → 0~1 범위 → setValueNotifyingHost()
+ */
 void PluginProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
+    // 바이너리를 XML로 변환
     std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
-    if (xmlState != nullptr)
-        if (xmlState->hasTagName (apvts.state.getType()))
-            apvts.replaceState (juce::ValueTree::fromXml (*xmlState));
+    if (xmlState == nullptr)
+        return;
+
+    // 루트 엘리먼트가 PARAMETERS인지 검증
+    if (! xmlState->hasTagName (apvts.state.getType()))
+        return;
+
+    // 하위 호환 로직:
+    // 저장된 상태에 없는 파라미터는 현재 기본값을 그대로 유지하고,
+    // 저장된 상태에 존재하는 파라미터만 개별적으로 덮어써
+    // 이전 버전 프리셋이 새로 추가된 파라미터를 건드리지 않도록 한다.
+    for (auto* child : xmlState->getChildWithTagNameIterator ("PARAM"))
+    {
+        const auto id = child->getStringAttribute ("id");
+        if (id.isEmpty())
+            continue;
+
+        if (auto* param = apvts.getParameter (id))
+        {
+            // raw 값(파라미터 범위) → 정규화 0~1로 변환
+            const float rawValue = (float) child->getDoubleAttribute ("value");
+            const float normalized = param->getNormalisableRange().convertTo0to1 (rawValue);
+            // 정규화 범위 체크 후 UI와 호스트에 전파
+            param->setValueNotifyingHost (juce::jlimit (0.0f, 1.0f, normalized));
+        }
+    }
+}
+
+//==============================================================================
+// A/B 슬롯 구현 — 즉시 비교용 임시 ValueTree 저장소
+//==============================================================================
+
+/**
+ * @brief 현재 APVTS 상태를 A(0) 또는 B(1) 슬롯에 저장
+ *
+ * @param slot  슬롯 번호 (0=A, 1=B)
+ *
+ * **동작**:
+ * - APVTS 상태 스냅샷 획득 (모든 파라미터 값)
+ * - 지정한 슬롯의 ValueTree에 저장
+ * - 나중에 loadFromSlot()으로 복원 가능
+ *
+ * **사용 시나리오**:
+ * 1. 설정 A 작성 후 saveToSlot(0) 호출
+ * 2. 설정 변경 후 saveToSlot(1) 호출
+ * 3. loadFromSlot(0) / loadFromSlot(1)로 즉시 비교
+ *
+ * @note [메인 스레드] PresetPanel의 A/B 버튼 핸들러에서 호출.
+ *       ValueTree는 메모리 기반 스냅샷 (파일 저장 아님).
+ */
+void PluginProcessor::saveToSlot (int slot)
+{
+    // 현재 모든 파라미터 값의 스냅샷 획득
+    auto snapshot = apvts.copyState();
+    if (slot == 0)
+        slotA = snapshot;
+    else if (slot == 1)
+        slotB = snapshot;
+}
+
+/**
+ * @brief A(0) 또는 B(1) 슬롯에 저장된 상태를 APVTS에 복원
+ *
+ * @param slot  슬롯 번호 (0=A, 1=B)
+ *
+ * **동작**:
+ * 1. 슬롯의 ValueTree가 유효한지 확인
+ * 2. XML 엘리먼트로 변환
+ * 3. 각 <PARAM>을 개별 파라미터에 적용 (setValueNotifyingHost)
+ *
+ * **특징**:
+ * - replaceState() 대신 파라미터 단위 적용
+ * - UI Attachment와 리스너가 자동 갱신됨
+ * - 편집 중 다른 파라미터는 영향 받지 않음
+ *
+ * @note [메인 스레드] PresetPanel의 A/B 버튼 핸들러에서 호출.
+ */
+void PluginProcessor::loadFromSlot (int slot)
+{
+    // 슬롯 선택 및 유효성 확인
+    const juce::ValueTree& target = (slot == 0) ? slotA : slotB;
+    if (! target.isValid())
+        return;
+
+    // replaceState를 쓰는 대신 파라미터 단위로 덮어써 setValueNotifyingHost()
+    // 경로를 거쳐 UI Attachment와 리스너가 자동 갱신되도록 한다.
+    // (이전 setStateInformation()과 동일 로직)
+    std::unique_ptr<juce::XmlElement> xml (target.createXml());
+    if (xml == nullptr)
+        return;
+
+    // 각 파라미터를 XML에서 읽어 개별 적용
+    for (auto* child : xml->getChildWithTagNameIterator ("PARAM"))
+    {
+        const auto id = child->getStringAttribute ("id");
+        if (id.isEmpty())
+            continue;
+
+        if (auto* param = apvts.getParameter (id))
+        {
+            // raw 값 → 정규화 0~1 → setValueNotifyingHost()
+            const float rawValue = (float) child->getDoubleAttribute ("value");
+            const float normalized = param->getNormalisableRange().convertTo0to1 (rawValue);
+            param->setValueNotifyingHost (juce::jlimit (0.0f, 1.0f, normalized));
+        }
+    }
+}
+
+/**
+ * @brief 슬롯에 저장된 데이터가 있는지 확인
+ *
+ * @param slot  슬롯 번호 (0=A, 1=B)
+ * @return      슬롯이 유효하면 true (데이터 있음), 아니면 false
+ *
+ * **용도**:
+ * - PresetPanel::handleSlotButton()에서 첫 클릭 vs 이후 클릭 구분
+ * - 첫 클릭: isSlotValid() == false → saveToSlot()
+ * - 이후 클릭: isSlotValid() == true → loadFromSlot()
+ */
+bool PluginProcessor::isSlotValid (int slot) const
+{
+    if (slot == 0) return slotA.isValid();
+    if (slot == 1) return slotB.isValid();
+    return false;
 }
 
 //==============================================================================
@@ -188,6 +375,14 @@ PluginProcessor::createParameterLayout()
 
     params.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { "gate_enabled", 1 }, "Gate Enabled", true));
+
+    //--------------------------------------------------------------------------
+    // Input Active/Passive Pad
+    //--------------------------------------------------------------------------
+    // Passive(false, 기본값) vs Active(true, -10 dB 감쇄)
+    // Active 픽업 베이스는 Passive 대비 출력이 크므로 프리앰프 헤드룸 확보 목적
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { "input_active", 1 }, "Input Active", false));
 
     //--------------------------------------------------------------------------
     // Preamp

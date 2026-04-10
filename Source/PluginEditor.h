@@ -9,6 +9,7 @@
 #include "UI/GraphicEQPanel.h"
 #include "UI/BiAmpPanel.h"
 #include "UI/DIBlendPanel.h"
+#include "UI/PresetPanel.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ContentComponent — 스크롤 가능한 신호 체인 UI 전체를 담는 컨테이너
@@ -76,9 +77,10 @@ public:
     void resized() override;
 
 private:
-    static constexpr int titleHeight  = 35;
-    static constexpr int footerHeight = 22;
-    static constexpr int fixedHeight  = 1000; // 창 고정 높이 (스크롤로 콘텐츠 조회)
+    static constexpr int titleHeight   = 35;
+    static constexpr int presetBarHeight = 46;   // PresetPanel 영역
+    static constexpr int footerHeight  = 22;
+    static constexpr int fixedHeight   = 1000; // 창 고정 높이 (스크롤로 콘텐츠 조회)
 
     /**
      * @brief ContentComponent 높이를 재계산하고 Viewport 콘텐츠 크기를 갱신한다.
@@ -90,6 +92,11 @@ private:
     void updateContentSize();
 
     PluginProcessor& processorRef;
+
+    // Phase 8 헤더 UI — 프리셋 브라우저 + Active/Passive 입력 패드 토글
+    PresetPanel       presetPanel;
+    juce::ToggleButton inputActiveToggle;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> inputActiveAttachment;
 
     ContentComponent content;
     juce::Viewport   viewport;

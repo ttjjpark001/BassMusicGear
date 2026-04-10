@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS>
+  <PARAM id="amp_model" value="4"/>
+  <PARAM id="input_gain" value="18.0"/>
+  <PARAM id="volume" value="-4.0"/>
+  <PARAM id="bass" value="0.7"/>
+  <PARAM id="mid" value="0.6"/>
+  <PARAM id="treble" value="0.65"/>
+  <PARAM id="vpf" value="0.7"/>
+  <PARAM id="vle" value="0.5"/>
+  <PARAM id="drive" value="0.45"/>
+  <PARAM id="presence" value="0.7"/>
+  <PARAM id="cab_bypass" value="0"/>
+  <PARAM id="cab_ir" value="2"/>
+  <PARAM id="od_enabled" value="1"/>
+  <PARAM id="od_type" value="2"/>
+  <PARAM id="od_drive" value="0.6"/>
+  <PARAM id="od_dry_blend" value="0.25"/>
+</PARAMETERS>

@@ -33,6 +33,9 @@ public:
     void paint (juce::Graphics& g) override;
     void resized() override;
 
+    // 우클릭으로 사용자 EQ 프리셋 삭제
+    void mouseDown (const juce::MouseEvent& e) override;
+
     bool getExpanded() const { return expanded; }
     void setExpanded (bool shouldBeExpanded);
 
@@ -57,6 +60,27 @@ private:
     // 사용자가 슬라이더를 수동 조정하면 "(Custom)"으로 자동 리셋 (isApplyingPreset 플래그로 프리셋 적용 중은 무시).
     juce::ComboBox presetCombo;
     void applyPreset (int presetIndex);
+
+    // --- 사용자 EQ 프리셋 (Phase 8) ---
+    // 저장 경로: userApplicationDataDirectory/BassMusicGear/EQPresets/*.xml
+    // 빌트인 프리셋 아래 구분선으로 구분되어 나열되며, "Save Preset..." 항목과
+    // 사용자 프리셋이 함께 표시된다.
+    static juce::File getUserEqPresetDirectory();
+    void refreshPresetCombo();                              // 빌트인 + 유저 목록 재구성
+    void applyUserPreset (const juce::String& presetName);  // XML에서 10밴드 값 로드
+    void saveCurrentAsUserPreset();                         // AlertWindow로 이름 입력 후 저장
+    void deleteUserPreset (const juce::String& presetName); // 확인 후 파일 삭제
+
+    // 메뉴 ID 매핑:
+    //   1       = (Custom)
+    //   2..7    = 빌트인 프리셋 (Flat, Bass Boost, ..., Hi-Fi)
+    //   100     = "Save Preset..." 항목
+    //   1000..  = 사용자 프리셋 (인덱스 순)
+    static constexpr int savePresetMenuId = 100;
+    static constexpr int userPresetIdBase = 1000;
+
+    // 현재 로드된 사용자 프리셋 이름 리스트 (Delete 및 인덱스 매핑용)
+    juce::StringArray userPresetNames;
 
     // FLAT(전체 0dB) 리셋 버튼
     // 모든 밴드를 0dB로 설정하고 presetCombo를 "Flat"으로 선택

@@ -111,6 +111,7 @@ private:
     float prevAttack    = -1.0f;
     int   prevMidPos    = -1;
     int   prevAmpModel  = -1;
+    int   prevCabIr     = -1;   // cab_ir 파라미터 변경 감지 (프리셋 로드 후 cab_ir 덮어쓰기 방지)
     float prevCrossoverFreq = -1.0f;
 
     // GraphicEQ 파라미터 변경 감지

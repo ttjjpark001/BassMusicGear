@@ -266,11 +266,23 @@ void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTre
     {
         setAmpModel (static_cast<AmpModelId> (ampModelIndex));
         prevAmpModel = ampModelIndex;
+        // cab_ir 파라미터를 강제로 덮어쓰지 않는다.
+        // 대신 아래 cab_ir 블록이 현재 APVTS 값으로 IR을 로드하도록 prevCabIr을 리셋한다.
+        // 이렇게 하면 프리셋이 설정한 cab_ir 값이 앰프 모델 기본값으로 덮어써지지 않는다.
+        prevCabIr = -1;
+    }
 
-        const auto& newModel = AmpModelLibrary::getModel (static_cast<AmpModelId> (ampModelIndex));
-        const int irIndex = irNameToIndex (newModel.defaultIRName);
-        if (auto* p = apvts.getParameter ("cab_ir"))
-            p->setValueNotifyingHost (p->convertTo0to1 (static_cast<float> (irIndex)));
+    // --- Cabinet IR ---
+    // cab_ir APVTS 파라미터가 변경될 때마다(프리셋 로드 또는 사용자 변경) 올바른 IR을 로드한다.
+    const int cabIr = static_cast<int> (apvts.getRawParameterValue ("cab_ir")->load());
+    if (cabIr != prevCabIr)
+    {
+        if      (cabIr == 0) cabinet.loadIRFromBinaryData (BinaryData::ir_8x10_svt_wav,     BinaryData::ir_8x10_svt_wavSize);
+        else if (cabIr == 1) cabinet.loadIRFromBinaryData (BinaryData::ir_4x10_jbl_wav,     BinaryData::ir_4x10_jbl_wavSize);
+        else if (cabIr == 2) cabinet.loadIRFromBinaryData (BinaryData::ir_1x15_vintage_wav, BinaryData::ir_1x15_vintage_wavSize);
+        else if (cabIr == 3) cabinet.loadIRFromBinaryData (BinaryData::ir_2x12_british_wav, BinaryData::ir_2x12_british_wavSize);
+        else if (cabIr == 4) cabinet.loadIRFromBinaryData (BinaryData::ir_2x10_modern_wav,  BinaryData::ir_2x10_modern_wavSize);
+        prevCabIr = cabIr;
     }
 
     // --- ToneStack coefficients ---

@@ -41,7 +41,7 @@ public:
      * - 초기 프리셋 목록 로드
      */
     explicit PresetPanel (PluginProcessor& processor);
-    ~PresetPanel() override = default;
+    ~PresetPanel() override;
 
     /**
      * @brief 패널 배경 및 테두리 그리기
@@ -49,6 +49,14 @@ public:
      * @note [메인 스레드] 배경색은 어두운 회색(#2a2a3e), 테두리는 밝은 회색
      */
     void paint (juce::Graphics& g) override;
+
+    /**
+     * @brief 우측 마우스 이벤트 처리 — A/B 버튼 우클릭 시 슬롯 해제
+     *
+     * @note mouseDown과 onClick의 순서 제어: suppressSlotClick 플래그로
+     *       우클릭 감지 후 onClick 호출을 방지한다.
+     */
+    void mouseDown (const juce::MouseEvent& e) override;
 
     /**
      * @brief UI 컴포넌트 크기 및 위치 설정
@@ -72,7 +80,9 @@ private:
      *
      * @param menuId  ComboBox에서 선택한 항목 ID (1000+idx 또는 2000+idx)
      *
-     * 메뉴 ID 범위로 팩토리 또는 사용자 프리셋 판정 후 loadFactoryPreset 또는 loadUserPreset 호출.
+     * 메뉴 ID 범위로 팩토리 또는 사용자 프리셋을 판정. 프리셋 로드 직전에
+     * suppressNextCabIrOverride()를 호출해 프리셋의 cab_ir 값이 앰프 모델
+     * 기본값으로 덮어써지지 않도록 한다.
      */
     void presetSelected (int menuId);
 
@@ -107,12 +117,17 @@ private:
     void handleImport();
 
     /**
-     * @brief A/B 슬롯 버튼 핸들러 — 상태 저장/복원
+     * @brief A/B 슬롯 버튼 핸들러 — 상태 저장/복원 및 cab_ir 자동 전환 억제
      *
      * @param slot  슬롯 번호 (0=A, 1=B)
      *
-     * 첫 클릭: processorRef.saveToSlot() 호출 → 버튼 토글 활성화
-     * 이후 클릭: processorRef.loadFromSlot() 호출 → 저장된 상태 복원
+     * 좌클릭 동작:
+     * - 첫 클릭: processorRef.saveToSlot() 호출 → 현재 상태 저장, 버튼 토글
+     * - 이후 클릭: suppressNextCabIrOverride() 호출 후 processorRef.loadFromSlot()
+     *   → 저장된 상태 복원 (슬롯의 cab_ir 값 유지), ComboBox 선택 해제
+     *
+     * @note [메인 스레드] 슬롯 복원 시 cab_ir이 프리셋처럼 변경되는 것을
+     *       방지하기 위해 suppressNextCabIrOverride()를 호출한다.
      */
     void handleSlotButton (int slot);
 
@@ -127,9 +142,8 @@ private:
     juce::TextButton slotAButton  { "A" };
     juce::TextButton slotBButton  { "B" };
 
-    // 선택된 프리셋 종류 추적: Delete 버튼 활성화 여부 판단용
-    // (사용자 프리셋만 삭제 가능)
-    bool isUserPresetSelected = false;
+    bool isUserPresetSelected = false;  // 선택된 프리셋이 사용자 프리셋인지 여부
+    bool suppressSlotClick    = false;  // 우클릭(mouseDown) 후 onClick 호출 억제
 
     // 메뉴 ID 오프셋: 팩토리/사용자 프리셋 구분용
     // ComboBox 메뉴 ID = factoryIdOffset + index (또는 userIdOffset + index)

@@ -4,8 +4,8 @@ BassMusicGear 구현 백로그.
 완료된 Phase들 중 아직 구현되지 않은 항목을 관리한다.
 미래 Phase의 항목은 포함하지 않는다.
 
-**마지막 갱신**: 2026-04-09
-**기준 Phase**: Phase 0 ~ Phase 7 (완료 기준)
+**마지막 갱신**: 2026-04-10
+**기준 Phase**: Phase 0 ~ Phase 8 (완료 기준)
 **총 미구현 항목**: 6건 (미구현 0건 / 부분 구현 3건 / 확인 필요 3건)
 
 ---
@@ -27,7 +27,7 @@ BassMusicGear 구현 백로그.
 | 심각도 | 항목 | 원래 분류 | 처리 예정 Phase | 설명 |
 |--------|------|---------|--------------|------|
 | 확인 필요 | Compressor 게인 리덕션 VUMeter 연동 | Phase 3 P0 부분 / Phase 7 P1 이월 | Phase 9 | Compressor.cpp에서 gainReductionDb를 atomic으로 저장하고 getGainReductionDb() API가 준비됐으나, Source/UI/VUMeter.h/.cpp 파일이 존재하지 않음. Phase 9에서 VUMeter 구현 시 연동 완성. |
-| 부분 구현 | 튜너 참조 주파수 UI (tuner_reference_a) | Phase 3 P0 부분 | Phase 9 | PluginProcessor.cpp에 APVTS 파라미터 등록 완료(430~450Hz). Tuner.cpp에서 referenceAParam->load()로 DSP 적용 중. TunerDisplay에 슬라이더/스피너 UI가 없어 사용자가 조작 불가. Phase 9 UI 완성 단계에서 TunerDisplay에 노브/스피너 추가 필요. |
+| 부분 구현 | 튜너 참조 주파수 UI (tuner_reference_a) | Phase 3 P0 부분 | Phase 9 | APVTS 파라미터 등록 완료(430~450Hz). Tuner.cpp에서 DSP 적용 중. TunerDisplay에 슬라이더/스피너 UI가 없어 사용자가 조작 불가. Phase 9 UI 완성 단계에서 TunerDisplay에 노브/스피너 추가 필요. |
 
 ---
 
@@ -35,7 +35,7 @@ BassMusicGear 구현 백로그.
 
 | 심각도 | 항목 | 원래 분류 | 처리 예정 Phase | 설명 |
 |--------|------|---------|--------------|------|
-| 확인 필요 | Cabinet.h 주석 잔류 ("향후 Phase: 여러 캐비닛 모델 추가 예정") | 문서 정리 | Phase 10 | Cabinet.h 17번째 줄에 "향후 Phase: 여러 캐비닛 모델(Fender, Ampeg, Eden 등) 추가 예정" 주석이 남아 있음. 기능 미구현 자체보다는 문서 일관성 차원에서 Phase 10 실제 IR 교체 시 함께 정리 필요. |
+| 확인 필요 | Cabinet.h 주석 잔류 ("향후 Phase: 여러 캐비닛 모델 추가 예정") | 문서 정리 | Phase 10 | Cabinet.h 18번째 줄에 "향후 Phase: 여러 캐비닛 모델(Fender, Ampeg, Eden 등) 추가 예정" 주석이 남아 있음. 기능 미구현 자체보다는 문서 일관성 차원에서 Phase 10 실제 IR 교체 시 함께 정리 필요. |
 
 ---
 
@@ -67,3 +67,14 @@ BassMusicGear 구현 백로그.
 | PowerAmp 앰프별 포화 차별화 (Tube6550/TubeEL34/SolidState/ClassD) | Phase 2 P1 이월 (-> Phase 7) | Phase 7 | 2026-04-09 |
 | Compressor EffectBlock UI | Phase 3 누락 (-> Phase 7) | Phase 7 | 2026-04-09 |
 | Delay BPM Sync | Phase 5 P1 이월 (-> Phase 7) | Phase 7 | 2026-04-09 |
+| NoiseGateTest.cpp 단위 테스트 | Phase 1 누락 (-> Phase 8 CARRY) | Phase 8 | 2026-04-10 |
+| PreampTest.cpp 단위 테스트 | Phase 1 누락 (-> Phase 8 CARRY) | Phase 8 | 2026-04-10 |
+| TunerTest.cpp 단위 테스트 | Phase 3 누락 (-> Phase 8 CARRY) | Phase 8 | 2026-04-10 |
+| PresetTest.cpp 단위 테스트 | Phase 8 P0 | Phase 8 | 2026-04-10 |
+| InputPadTest.cpp 단위 테스트 | Phase 8 P0 신규 | Phase 8 | 2026-04-10 |
+| Active/Passive 입력 패드 (input_active APVTS, -10dB 감쇄) | Phase 8 P0 신규 | Phase 8 | 2026-04-10 |
+| PresetManager (ValueTree 직렬화/역직렬화, Export/Import) | Phase 8 P0 | Phase 8 | 2026-04-10 |
+| A/B 슬롯 (saveToSlot/loadFromSlot/clearSlot) | Phase 8 P0 | Phase 8 | 2026-04-10 |
+| 팩토리 프리셋 XML 15종 | Phase 8 P0 | Phase 8 | 2026-04-10 |
+| PresetPanel UI (Save/Delete/Export/Import/A/B 버튼) | Phase 8 P0 | Phase 8 | 2026-04-10 |
+| EQ 사용자 프리셋 (GraphicEQPanel 드롭다운 저장/불러오기/삭제) | Phase 8 P0 | Phase 8 | 2026-04-10 |

@@ -766,6 +766,28 @@ PLAN.md의 Phase 10을 구현해줘. PRD.md 섹션 13과 CLAUDE.md AudioDeviceMa
 
 ---
 
+## Phase 10 이후 추가 고려사항
+
+MVP 이후 품질 개선 항목. Phase 10 완료 후 우선순위에 따라 선택적으로 구현.
+
+### UI 구조 개선
+
+- **탭 기반 UI 레이아웃**: 현재 스크롤이 필요한 긴 화면을 3개 탭으로 재구성하여 DAW 플러그인 창 사이즈 문제 해결.
+  - **튜너**: 탭과 무관하게 상단에 항상 고정 표시
+  - **Main 탭**: 프리셋 + 앰프 모델 선택 + 톤스택 + Graphic EQ
+  - **FX 탭**: 이펙터 체인 전체 (NoiseGate → Compressor → Overdrive → Octaver → EnvelopeFilter → Chorus → Delay → Reverb)
+  - **Setup 탭**: 캐비넷(IR 선택) + DI Blend + Bi-Amp 크로스오버
+  - 구현 시 `juce::TabbedComponent` 또는 커스텀 탭 버튼 + `juce::Component` 전환 방식 사용.
+
+### UX 개선
+
+- **프리셋 dirty 표시 (●)**: 프리셋 로드 후 파라미터를 변경했을 때 ComboBox 옆에 수정 표시를 보여주는 기능.
+  - 구현 방법: 프리셋 로드 시 전체 파라미터 스냅샷 저장 → `juce::Timer` 200ms 주기로 현재 값과 비교 → 차이가 있으면 "●" Label 표시.
+  - `AudioProcessorValueTreeState::addParameterListener` 방식은 리스너 등록이 조용히 실패하는 문제로 동작하지 않아 Timer 방식을 권장.
+  - 팩토리 프리셋에도 동일하게 적용 가능 (저장 강요 없이 표시만).
+
+---
+
 ## P1 이월 추적표
 
 구현 중 갱신한다. 이월 항목은 다음 Phase의 ✅ CARRY로 반드시 처리.
@@ -775,16 +797,16 @@ PLAN.md의 Phase 10을 구현해줘. PRD.md 섹션 13과 CLAUDE.md AudioDeviceMa
 | Phase 1 | PowerAmp Sag | Phase 2 | ✅ (Phase 2에서 완료) |
 | Phase 1 | 커스텀 IR 파일 로드 (`Cabinet::loadIR(File)`) | Phase 6 | ✅ (Phase 1에서 조기 완료) |
 | Phase 1 | NoiseGate EffectBlock UI | Phase 7 | ✅ (Phase 7에서 완료) |
-| Phase 1 | NoiseGateTest.cpp 단위 테스트 누락 | Phase 8 | ☐ |
-| Phase 1 | PreampTest.cpp 단위 테스트 누락 | Phase 8 | ☐ |
-| Phase 8 | Active/Passive 입력 패드 (`input_active`, -10dB) | Phase 8 | ☐ |
+| Phase 1 | NoiseGateTest.cpp 단위 테스트 누락 | Phase 8 | ✅ (Phase 8에서 완료) |
+| Phase 1 | PreampTest.cpp 단위 테스트 누락 | Phase 8 | ✅ (Phase 8에서 완료) |
+| Phase 8 | Active/Passive 입력 패드 (`input_active`, -10dB) | Phase 8 | ✅ (Phase 8에서 완료) |
 | Phase 2 | PowerAmp 앰프별 포화 차별화 | Phase 7 | ✅ (Phase 7에서 완료) |
 | Phase 2 | 앰프 모델별 UI 색상 테마 (Phase 6 라벨 부분 적용 → Phase 9 LookAndFeel 전면 통합) | Phase 9 | ☐ (부분 적용됨) |
 | Phase 2 | 실제 캐비닛 IR 파일 연결 (8x10 SVT / 4x10 JBL / 1x15 Vintage / 2x12 British / 2x10 Modern) | Phase 10 | ☐ |
 | Phase 3 | Compressor EffectBlock UI | Phase 7 | ✅ (Phase 7에서 완료) |
 | Phase 3 | Compressor 게인 리덕션 VUMeter 연동 | Phase 9 | ☐ |
 | Phase 3 | 튜너 참조 주파수 UI (`tuner_reference_a`) | Phase 9 | ☐ |
-| Phase 3 | TunerTest.cpp 단위 테스트 누락 | Phase 8 | ☐ |
+| Phase 3 | TunerTest.cpp 단위 테스트 누락 | Phase 8 | ✅ (Phase 8에서 완료) |
 | Phase 4 | Octaver Oct-Up 음질 개선 | Phase 8 | ✅ (Phase 5에서 완료) |
 | Phase 4 | OctaverTest.cpp 단위 테스트 누락 | Phase 9 | ☐ |
 | Phase 4 | EnvelopeFilterTest.cpp 단위 테스트 누락 | Phase 9 | ☐ |

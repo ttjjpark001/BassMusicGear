@@ -260,20 +260,37 @@ void SignalChain::connectParameters (juce::AudioProcessorValueTreeState& apvts)
 
 void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTreeState& apvts)
 {
-    // --- Amp model switch ---
+    // --- 앰프 모델 변경 감지 및 cab_ir 자동 전환 제어 ---
     const int ampModelIndex = static_cast<int> (apvts.getRawParameterValue ("amp_model")->load());
     if (ampModelIndex != prevAmpModel)
     {
         setAmpModel (static_cast<AmpModelId> (ampModelIndex));
         prevAmpModel = ampModelIndex;
-        // cab_ir 파라미터를 강제로 덮어쓰지 않는다.
-        // 대신 아래 cab_ir 블록이 현재 APVTS 값으로 IR을 로드하도록 prevCabIr을 리셋한다.
-        // 이렇게 하면 프리셋이 설정한 cab_ir 값이 앰프 모델 기본값으로 덮어써지지 않는다.
-        prevCabIr = -1;
+
+        // suppressCabIrFlag가 true면 프리셋 로드 중이므로, APVTS cab_ir 값을
+        // 프리셋이 저장한 값(또는 사용자가 선택한 값)으로 유지하고,
+        // 아래 cab_ir 감지 블록에서 그 값에 해당하는 IR을 로드한다.
+        // false면 사용자가 직접 UI에서 앰프 모델을 선택한 것이므로,
+        // 해당 앰프의 기본 IR(defaultIRName)로 자동 전환한다.
+        const bool suppress = suppressCabIrFlag.exchange (false);
+        if (suppress)
+        {
+            prevCabIr = -1;  // cab_ir 감지 블록이 APVTS 값을 읽도록 강제
+        }
+        else
+        {
+            // 사용자 직접 선택: 해당 앰프의 기본 cab_ir로 APVTS 값 업데이트
+            const auto& newModel = AmpModelLibrary::getModel (static_cast<AmpModelId> (ampModelIndex));
+            const int irIndex = irNameToIndex (newModel.defaultIRName);
+            if (auto* p = apvts.getParameter ("cab_ir"))
+                p->setValueNotifyingHost (p->convertTo0to1 (static_cast<float> (irIndex)));
+            prevCabIr = -1;  // cab_ir 감지 블록이 새 값을 읽도록 강제
+        }
     }
 
-    // --- Cabinet IR ---
-    // cab_ir APVTS 파라미터가 변경될 때마다(프리셋 로드 또는 사용자 변경) 올바른 IR을 로드한다.
+    // --- 캐비닛 IR 로드: cab_ir 파라미터 변경 감지 ---
+    // cab_ir이 변경될 때마다(직접 선택 또는 프리셋 로드 또는 위의 자동 전환)
+    // 해당 IR을 로드한다. prevCabIr과 비교해 불필요한 재로드를 피한다.
     const int cabIr = static_cast<int> (apvts.getRawParameterValue ("cab_ir")->load());
     if (cabIr != prevCabIr)
     {
@@ -341,7 +358,8 @@ void SignalChain::updateCoefficientsFromMainThread (juce::AudioProcessorValueTre
     const auto& model = AmpModelLibrary::getModel (currentModelId);
 
     // Italian Clean (MarkbassFourBand): VPF(Variable Pre-shape Filter) / VLE(Vintage Loudspeaker Emulator)
-    // VPF: 미드 스쿱 (380Hz 노치 + 35Hz/10kHz 부스트), VLE: 가변 로우패스 고역 롤오프
+    // VPF: 35Hz 셸빙 부스트 + 380Hz 피킹 컷(노치) + 10kHz 셸빙 부스트 3개 합산 (미드 스쿱 특성)
+    // VLE: StateVariableTPTFilter 로우패스, 20kHz→4kHz 가변 컷오프 (6dB/oct 고역 롤오프)
     if (model.toneStack == ToneStackType::MarkbassFourBand)
     {
         const float vpf = apvts.getRawParameterValue ("vpf")->load();

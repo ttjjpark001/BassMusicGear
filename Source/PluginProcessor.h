@@ -44,7 +44,7 @@ public:
      * @note [메인 스레드] DAW에서 재생 직전에 호출된다.
      *       - SignalChain::prepare() 호출
      *       - 모든 필터/오버샘플러/컨볼루션 초기화
-     *       - setLatencySamples(totalPDC) 호출: Preamp 오버샘플링 + Cabinet 지연 합산
+     *       - setLatencySamples(totalPDC) 호출: Overdrive/Preamp/PowerAmp 오버샘플링 + Cabinet 컨볼루션 지연 합산
      */
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
 
@@ -70,9 +70,11 @@ public:
      * @param buffer      입출력 오디오 버퍼 (In-place 처리)
      * @param midiMessages  MIDI 메시지 (미사용)
      * @note [오디오 스레드] 절대 금지: malloc/new, 파일 I/O, 뮤텍스, 시스템 콜
-     *       모든 DSP 블록의 process() 메서드를 순서대로 호출하여
-     *       신호를 게이트 → 컴프레서 → 오버드라이브 → 옥타버 → 엔벨로프 필터
-     *       → 프리앰프 → 톤스택 → 파워앰프 → 캐비닛으로 통과시킨다.
+     *       SignalChain::process()를 호출하여 클래스 최상단에 문서화된
+     *       전체 신호 체인(NoiseGate → Tuner → Compressor → BiAmpCrossover →
+     *       [Overdrive → Octaver → EnvelopeFilter → Preamp → AmpVoicing →
+     *       ToneStack → GraphicEQ → Chorus → Delay → Reverb → PowerAmp] →
+     *       Cabinet ↔ DIBlend)를 통과시킨다.
      */
     void processBlock (juce::AudioBuffer<float>& buffer,
                        juce::MidiBuffer& midiMessages) override;
@@ -144,6 +146,19 @@ public:
     /** PresetManager 접근자 (UI에서 프리셋 목록/저장/로드에 사용) */
     PresetManager& getPresetManager() { return presetManager; }
 
+    /**
+     * @brief 프리셋 로드 직전에 호출 — 다음 앰프 모델 변경 시 cab_ir 자동 전환 억제
+     *
+     * 프리셋 로드 중 포함된 cab_ir 값(또는 사용자 선택값)을
+     * 유지하고 싶을 때 호출. 플래그는 첫 번째 앰프 모델 변경
+     * 후 자동으로 해제되어 이후 앰프 변경은 정상적으로 IR을
+     * 자동 전환한다.
+     *
+     * @note [메인 스레드] PresetPanel::presetSelected() 또는
+     *       handleImport()에서 호출.
+     */
+    void suppressNextCabIrOverride() { signalChain.suppressNextCabIrOverride(); }
+
     //==========================================================================
     // A/B 슬롯 — 현재 상태를 두 개의 임시 슬롯에 저장/복원하여 즉시 비교
     //==========================================================================
@@ -157,9 +172,16 @@ public:
     /** 슬롯에 데이터가 있는지 확인 */
     bool isSlotValid (int slot) const;
 
+    /** A(0) 또는 B(1) 슬롯을 초기화한다 (우클릭 해제 시 호출) */
+    void clearSlot (int slot)
+    {
+        if (slot == 0) slotA = juce::ValueTree{};
+        else if (slot == 1) slotB = juce::ValueTree{};
+    }
+
 private:
     /**
-     * @brief 타이머 콜백: 메인 스레드에서 ~100ms마다 호출
+     * @brief 타이머 콜백: 메인 스레드에서 30Hz(~33ms 간격)로 호출
      *
      * Bass/Mid/Treble/Presence 등 메인 스레드에서만 계산할 수 있는
      * 톤 컨트롤 계수를 갱신하기 위해 SignalChain::updateCoefficientsFromMainThread() 호출.
@@ -177,7 +199,7 @@ private:
      * - bass, mid, treble: 0~1 연속값
      * - drive, presence, sag: 0~1 연속값
      * - vpf, vle, grunt, attack: 0~1 연속값 (모델별)
-     * - mid_position: ComboBox (0~4, American Vintage만)
+     * - mid_position: ComboBox (0~4, Baxandall 톤스택 사용 모델 — American Vintage / Origin Pure)
      * - cab_ir: ComboBox (0~4, 내장 IR)
      * - cab_bypass: 토글 버튼
      *

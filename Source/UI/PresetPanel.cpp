@@ -3,13 +3,14 @@
 
 //==============================================================================
 /**
- * @brief PresetPanel 초기화 및 레이아웃 설정
+ * @brief PresetPanel 초기화: UI 컴포넌트 색상 설정 및 이벤트 연결
  *
  * @param p  PluginProcessor 참조
  *
  * 역할:
  * - 프리셋 드롭다운 색상 설정 및 onChange 콜백 연결
  * - Save/Delete/Export/Import/A/B 버튼 색상 설정 및 onClick 콜백 연결
+ * - A/B 버튼에 mouseListener 등록 (우클릭 슬롯 해제용)
  * - 모든 컴포넌트를 화면에 추가
  * - 초기 프리셋 목록 로드
  *
@@ -57,6 +58,10 @@ PresetPanel::PresetPanel (PluginProcessor& p)
     slotAButton.onClick  = [this] { handleSlotButton (0); };
     slotBButton.onClick  = [this] { handleSlotButton (1); };
 
+    // A/B 버튼 우클릭 감지: 슬롯 해제용
+    slotAButton.addMouseListener (this, false);
+    slotBButton.addMouseListener (this, false);
+
     addAndMakeVisible (saveButton);
     addAndMakeVisible (deleteButton);
     addAndMakeVisible (exportButton);
@@ -67,6 +72,8 @@ PresetPanel::PresetPanel (PluginProcessor& p)
     // --- 초기 프리셋 목록 로드 및 표시 ---
     refreshPresetList();
 }
+
+PresetPanel::~PresetPanel() = default;
 
 /**
  * @brief 프리셋 드롭다운 목록 갱신
@@ -83,7 +90,7 @@ void PresetPanel::refreshPresetList()
 
     auto& pm = processorRef.getPresetManager();
 
-    // 1. 팩토리 프리셋 15종 (ID: 1000~1014)
+    // 1. 팩토리 프리셋 (ID: factoryIdOffset + index, 즉 1000+idx)
     presetCombo.addSectionHeading ("Factory");
     for (int i = 0; i < pm.getNumFactoryPresets(); ++i)
         presetCombo.addItem (pm.getFactoryPresetName (i), factoryIdOffset + i);
@@ -119,8 +126,11 @@ void PresetPanel::presetSelected (int menuId)
     {
         // 팩토리 프리셋 (ID 1000~1999)
         const int idx = menuId - factoryIdOffset;
+        // 프리셋 로드 전에 suppressNextCabIrOverride() 호출:
+        // 로드될 cab_ir 값이 앰프 모델 자동 전환에 의해 덮어써지지 않도록 함
+        processorRef.suppressNextCabIrOverride();
         pm.loadFactoryPreset (idx);
-        isUserPresetSelected = false;  // Delete 버튼 비활성화
+        isUserPresetSelected = false;
     }
     else if (menuId >= userIdOffset)
     {
@@ -129,8 +139,9 @@ void PresetPanel::presetSelected (int menuId)
         const auto names = pm.getUserPresetNames();
         if (idx >= 0 && idx < names.size())
         {
+            processorRef.suppressNextCabIrOverride();
             pm.loadUserPreset (names[idx]);
-            isUserPresetSelected = true;  // Delete 버튼 활성화
+            isUserPresetSelected = true;
         }
     }
 }
@@ -166,7 +177,6 @@ void PresetPanel::handleSave()
                 {
                     // PresetManager::saveUserPreset() 호출
                     processorRef.getPresetManager().saveUserPreset (name);
-                    // 드롭다운 목록 갱신 (새로 저장된 프리셋 추가)
                     refreshPresetList();
                 }
             }
@@ -261,6 +271,7 @@ void PresetPanel::handleExport()
  * @brief Import 버튼 핸들러 — 파일에서 프리셋 로드
  *
  * FileChooser로 .bmg 또는 .xml 파일 선택. 호환 형식이면 자동 파싱.
+ * 로드 전에 suppressNextCabIrOverride()를 호출해 프리셋의 cab_ir 값을 유지.
  * 로드된 상태는 현재 APVTS에 병합되며, 없는 파라미터는 현재 값 유지.
  *
  * @note [메인 스레드] FileChooser::launchAsync() 비동기. 파일 읽기는 동기.
@@ -278,9 +289,13 @@ void PresetPanel::handleImport()
         [this] (const juce::FileChooser& fc)
         {
             auto file = fc.getResult();
-            // 선택된 파일이 실제 존재하는 파일인지 확인
             if (file.existsAsFile())
+            {
+                // 임포트할 프리셋의 cab_ir 값이 앰프 모델 자동 전환에 의해
+                // 덮어써지지 않도록 미리 플래그를 설정
+                processorRef.suppressNextCabIrOverride();
                 processorRef.getPresetManager().importPresetFromFile (file);
+            }
         });
 }
 
@@ -291,31 +306,68 @@ void PresetPanel::handleImport()
  *
  * **동작**:
  * - 슬롯이 비어있으면(처음 클릭): 현재 상태 저장 + 버튼 토글
- * - 슬롯이 차있으면(이후 클릭): 저장된 상태 복원 (즉시 비교 가능)
+ * - 슬롯이 차있으면(이후 클릭): suppressNextCabIrOverride() 호출 후
+ *   저장된 상태 복원. 슬롯의 cab_ir 값이 유지되고, ComboBox 선택 해제.
  *
  * **사용 예**:
- * 1. 설정 A 조성 후 A 버튼 클릭 → 저장
+ * 1. 설정 A(특정 IR 포함) 조성 후 A 버튼 클릭 → 저장
  * 2. 설정 B로 변경 후 B 버튼 클릭 → 저장
- * 3. A 버튼 클릭 → 설정 A 복원 (즉시 비교)
+ * 3. A 버튼 클릭 → 설정 A 복원 (IR 포함, 즉시 비교)
  * 4. B 버튼 클릭 → 설정 B 복원
  *
- * @note [메인 스레드] PluginProcessor의 ValueTree 스냅샷 저장/복원.
- *       UI 스레드 안전 (APVTS setValueNotifyingHost 호출).
+ * @note [메인 스레드] 슬롯 복원 시 cab_ir 자동 전환을 방지하기 위해
+ *       suppressNextCabIrOverride()를 호출하므로, 슬롯 저장 당시의
+ *       IR 선택이 앰프 모델 변경에도 불구하고 유지된다.
  */
 void PresetPanel::handleSlotButton (int slot)
 {
+    // 우클릭(mouseDown)으로 인한 호출이면 무시 (슬롯 해제는 이미 처리됨)
+    if (suppressSlotClick)
+    {
+        suppressSlotClick = false;
+        return;
+    }
+
     // 슬롯 유효성 확인 (첫 사용 vs 재사용)
     if (! processorRef.isSlotValid (slot))
     {
         // 첫 클릭: 현재 상태를 슬롯에 저장
         processorRef.saveToSlot (slot);
-        // 버튼 토글 표시 (시각 피드백)
         (slot == 0 ? slotAButton : slotBButton).setToggleState (true, juce::dontSendNotification);
     }
     else
     {
         // 이후 클릭: 저장된 상태를 복원 (즉시 비교 모드)
+        // suppressNextCabIrOverride()로 슬롯 복원 시 cab_ir 자동 전환 방지
+        processorRef.suppressNextCabIrOverride();
         processorRef.loadFromSlot (slot);
+        // 프리셋 드롭다운 선택 해제 (슬롯은 프리셋이 아니므로)
+        presetCombo.setSelectedId (0, juce::dontSendNotification);
+        isUserPresetSelected = false;
+    }
+}
+
+void PresetPanel::mouseDown (const juce::MouseEvent& e)
+{
+    if (! e.mods.isRightButtonDown())
+        return;
+
+    int slot = -1;
+    if (e.eventComponent == &slotAButton) slot = 0;
+    else if (e.eventComponent == &slotBButton) slot = 1;
+
+    if (slot < 0)
+        return;
+
+    // mouseDown 직후 자동으로 onClick이 호출되므로,
+    // suppressSlotClick 플래그로 handleSlotButton 진입을 방지한다.
+    suppressSlotClick = true;
+
+    // 슬롯에 저장된 상태가 있으면 우클릭으로 해제
+    if (processorRef.isSlotValid (slot))
+    {
+        processorRef.clearSlot (slot);
+        (slot == 0 ? slotAButton : slotBButton).setToggleState (false, juce::dontSendNotification);
     }
 }
 

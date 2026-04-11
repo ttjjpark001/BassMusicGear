@@ -54,6 +54,22 @@ public:
 
     void setAmpModel (AmpModelId modelId);
 
+    /**
+     * @brief 다음 번 앰프 모델 변경 시 cab_ir 자동 전환을 1회 억제한다.
+     *
+     * 프리셋 로드 직전에 호출하면, updateCoefficientsFromMainThread()에서
+     * 앰프 모델이 변경되어도 cab_ir APVTS 값을 사용자가 설정한 값으로
+     * 유지할 수 있다. 플래그는 첫 번째 앰프 모델 변경 감지 후
+     * updateCoefficientsFromMainThread()에서 자동으로 해제된다.
+     *
+     * 플래그 미설정(false): 사용자 직접 앰프 모델 변경
+     *   → 해당 앰프의 기본 cab_ir(defaultIRName)로 자동 전환
+     *
+     * 플래그 설정(true): 프리셋 로드 중 앰프 모델 변경
+     *   → cab_ir APVTS 값 유지 (프리셋에 저장된 IR 로드)
+     */
+    void suppressNextCabIrOverride() { suppressCabIrFlag.store (true); }
+
     Cabinet& getCabinet() { return cabinet; }
     Tuner& getTuner() { return tuner; }
     Compressor& getCompressor() { return compressor; }
@@ -111,7 +127,8 @@ private:
     float prevAttack    = -1.0f;
     int   prevMidPos    = -1;
     int   prevAmpModel  = -1;
-    int   prevCabIr     = -1;   // cab_ir 파라미터 변경 감지 (프리셋 로드 후 cab_ir 덮어쓰기 방지)
+    int   prevCabIr     = -1;  // APVTS cab_ir 파라미터 추적: 변경 시 해당 IR 로드
+    std::atomic<bool> suppressCabIrFlag { false }; // 프리셋 로드 시 cab_ir 자동 전환 1회 억제
     float prevCrossoverFreq = -1.0f;
 
     // GraphicEQ 파라미터 변경 감지

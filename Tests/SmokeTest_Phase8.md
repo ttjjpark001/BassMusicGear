@@ -105,6 +105,20 @@
 
 ---
 
+## EQ 사용자 프리셋 (Phase 8 구현, 파일 I/O 기반 수동 확인)
+
+> 단위 테스트 없음 — GraphicEQPanel 파일 I/O는 BinaryData 의존 없이 독립 구현이지만,
+> 파일 저장/로드 동작은 Standalone 앱에서 수동으로 확인한다.
+> 저장 경로: `%APPDATA%/BassMusicGear/EQPresets/*.xml`
+
+- [x] GraphicEQPanel 드롭다운에서 "Save Preset..." 선택 → 이름 입력 다이얼로그 표시 (확인 완료)
+- [x] EQ 프리셋 저장 → 드롭다운 목록에 저장된 프리셋 표시 (확인 완료)
+- [x] 저장된 EQ 프리셋 선택 → 10밴드 슬라이더 값 즉시 복원 (확인 완료)
+- [x] EQ 프리셋 삭제 → 드롭다운 목록에서 제거 (확인 완료)
+- [x] 앱 재시작 후 저장된 EQ 프리셋 목록 유지 (확인 완료)
+
+---
+
 ## NoiseGate 동작 청취
 
 - [x] NoiseGate Threshold 최대(0dB) → 베이스를 약하게 치면 완전 무음 (확인 완료)

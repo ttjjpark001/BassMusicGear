@@ -48,13 +48,13 @@
 - [x] MakeupGain +6dB → 압축 후 레벨 증가 확인 (Phase 7에서 확인 완료)
 
 ### 신호 체인 전체 동작
-- [ ] ⚠️ NoiseGate Threshold 최대 → 완전 무음 (Phase 8 이후 확인 필요 — 현재 NoiseGate UI 없음)
-- [ ] ⚠️ NoiseGate OFF → 신호 통과 (Phase 8 이후 확인 필요 — 현재 NoiseGate UI 없음)
+- [x] NoiseGate Threshold 최대 → 완전 무음 (확인 완료)
+- [x] NoiseGate OFF → 신호 통과 (확인 완료)
 - [ ] ⚠️ 5종 앰프 모델 전환 → 각 모델별 음색 차이 확인 (Phase 9 이후 확인 필요 — 현재 모든 IR이 placeholder로 모델 간 음색 차이 없음)
 
 ### UI / 레이아웃
 - [ ] ⚠️ 창 리사이즈 → 레이아웃 비율 유지 (Phase 8 이후 확인 필요 — 현재 리사이즈 미지원, 최소화/최대화만 동작)
-- [ ] ⚠️ 컴프레서 파라미터 노브 우클릭 → 기본값 리셋 동작 (Phase 4 이후 확인 필요 — 현재 컴프레서 UI 없음)
+- [x] 컴프레서 파라미터 노브 우클릭 → 기본값 리셋 동작 (확인 완료)
 
 ---
 

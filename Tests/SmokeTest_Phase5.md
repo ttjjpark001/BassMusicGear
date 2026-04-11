@@ -72,8 +72,8 @@
 
 ### [Phase 4 이월] EnvelopeFilter 미완성 항목
 
-- [ ] ⚠️ EnvelopeFilter Direction Down → 어택 시 컷오프 하강 확인 (Phase 8 이후 — ef_direction ComboBox UI 미구현)
-- [ ] ⚠️ EnvelopeFilter FreqMin/FreqMax 범위 조절 → 스윕 범위 변화 확인 (Phase 8 이후 — ef_freq_min/ef_freq_max 노브 UI 미구현)
+- [x] EnvelopeFilter Direction Down → 어택 시 컷오프 하강 확인 (확인 완료)
+- [x] EnvelopeFilter FreqMin/FreqMax 범위 조절 → 스윕 범위 변화 확인 (확인 완료)
 
 ---
 

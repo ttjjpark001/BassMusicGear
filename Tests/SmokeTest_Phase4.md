@@ -53,9 +53,9 @@
   - 기대: 어택 시 컷오프 주파수가 상승하며 밝아짐 (Up Direction)
 - [x] EnvelopeFilter Sensitivity 최대 → 약한 연주에도 필터 스윕 발생 (확인 완료)
 - [x] EnvelopeFilter Sensitivity 최소 → 강한 연주에서만 필터 스윕 발생 (확인 완료)
-- [ ] ⚠️ EnvelopeFilter Direction Down → 어택 시 컷오프 하강, 어두워지는 방향 확인 (Phase 5 이후 확인 필요 — ef_direction ComboBox UI 미구현)
+- [x] EnvelopeFilter Direction Down → 어택 시 컷오프 하강, 어두워지는 방향 확인 (확인 완료)
 - [x] EnvelopeFilter Resonance 최대(10) → 날카로운 봉우리 필터 (추가 공명 확인) (확인 완료)
-- [ ] ⚠️ EnvelopeFilter FreqMin/FreqMax 범위 조절 → 스윕 범위 변화 확인 (Phase 5 이후 확인 필요 — ef_freq_min/ef_freq_max 노브 UI 미구현)
+- [x] EnvelopeFilter FreqMin/FreqMax 범위 조절 → 스윕 범위 변화 확인 (확인 완료)
 
 ### [Phase 3 이월] 컴프레서 파라미터 노브 리셋
 

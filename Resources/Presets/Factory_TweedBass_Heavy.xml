@@ -1,19 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <PARAMETERS>
+  <!-- Amp Model: Tweed Bass (Fender Bassman) -->
   <PARAM id="amp_model" value="1"/>
+  <PARAM id="input_active" value="0"/>
   <PARAM id="input_gain" value="20.0"/>
   <PARAM id="volume" value="-4.0"/>
+  <PARAM id="gate_enabled" value="1"/>
+  <PARAM id="gate_threshold" value="-48.0"/>
+  <PARAM id="gate_attack" value="1.0"/>
+  <PARAM id="gate_hold" value="50.0"/>
+  <PARAM id="gate_release" value="100.0"/>
   <PARAM id="bass" value="0.75"/>
   <PARAM id="mid" value="0.4"/>
   <PARAM id="treble" value="0.6"/>
+  <PARAM id="mid_position" value="1"/>
+  <PARAM id="vpf" value="0.0"/>
+  <PARAM id="vle" value="0.0"/>
+  <PARAM id="grunt" value="0.5"/>
+  <PARAM id="attack" value="0.5"/>
   <PARAM id="drive" value="0.75"/>
   <PARAM id="presence" value="0.65"/>
   <PARAM id="sag" value="0.55"/>
   <PARAM id="cab_bypass" value="0"/>
   <PARAM id="cab_ir" value="1"/>
+  <PARAM id="tuner_reference_a" value="440.0"/>
+  <PARAM id="tuner_mute" value="0"/>
+  <PARAM id="comp_enabled" value="1"/>
+  <PARAM id="comp_threshold" value="-24.0"/>
+  <PARAM id="comp_ratio" value="5.0"/>
+  <PARAM id="comp_attack" value="6.0"/>
+  <PARAM id="comp_release" value="150.0"/>
+  <PARAM id="comp_makeup" value="3.0"/>
+  <PARAM id="comp_dry_blend" value="0.1"/>
   <PARAM id="od_enabled" value="1"/>
   <PARAM id="od_type" value="0"/>
   <PARAM id="od_drive" value="0.7"/>
+  <PARAM id="od_tone" value="0.5"/>
   <PARAM id="od_dry_blend" value="0.15"/>
+  <PARAM id="oct_enabled" value="0"/>
+  <PARAM id="oct_sub_level" value="0.5"/>
+  <PARAM id="oct_up_level" value="0.0"/>
+  <PARAM id="oct_dry_level" value="1.0"/>
+  <PARAM id="ef_enabled" value="0"/>
+  <PARAM id="ef_sensitivity" value="0.5"/>
+  <PARAM id="ef_freq_min" value="200.0"/>
+  <PARAM id="ef_freq_max" value="4000.0"/>
+  <PARAM id="ef_resonance" value="3.0"/>
+  <PARAM id="ef_direction" value="0"/>
+  <PARAM id="geq_enabled" value="1"/>
+  <PARAM id="geq_31" value="3.0"/>
+  <PARAM id="geq_63" value="2.0"/>
+  <PARAM id="geq_125" value="0.0"/>
+  <PARAM id="geq_250" value="-1.5"/>
+  <PARAM id="geq_500" value="0.0"/>
+  <PARAM id="geq_1k" value="1.0"/>
+  <PARAM id="geq_2k" value="0.0"/>
+  <PARAM id="geq_4k" value="0.0"/>
+  <PARAM id="geq_8k" value="0.0"/>
+  <PARAM id="geq_16k" value="0.0"/>
+  <PARAM id="chorus_enabled" value="0"/>
+  <PARAM id="chorus_rate" value="1.0"/>
+  <PARAM id="chorus_depth" value="0.5"/>
+  <PARAM id="chorus_mix" value="0.5"/>
+  <PARAM id="delay_enabled" value="0"/>
+  <PARAM id="delay_time" value="500.0"/>
+  <PARAM id="delay_feedback" value="0.3"/>
+  <PARAM id="delay_damping" value="0.3"/>
+  <PARAM id="delay_mix" value="0.5"/>
+  <PARAM id="delay_bpm_sync" value="0"/>
+  <PARAM id="delay_note_value" value="0"/>
+  <PARAM id="reverb_enabled" value="0"/>
+  <PARAM id="reverb_type" value="0"/>
+  <PARAM id="reverb_size" value="0.5"/>
+  <PARAM id="reverb_decay" value="0.5"/>
+  <PARAM id="reverb_mix" value="0.3"/>
+  <PARAM id="biamp_on" value="0"/>
+  <PARAM id="crossover_freq" value="200.0"/>
+  <PARAM id="di_blend_on" value="0"/>
+  <PARAM id="di_blend" value="0.5"/>
+  <PARAM id="clean_level" value="0.0"/>
+  <PARAM id="processed_level" value="0.0"/>
+  <PARAM id="ir_position" value="0"/>
 </PARAMETERS>
